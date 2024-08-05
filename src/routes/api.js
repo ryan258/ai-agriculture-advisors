@@ -31,7 +31,8 @@ router.post('/query', async (req, res) => {
         throw new Error('Invalid expert role');
     }
 
-    res.json({ response });
+    // Send the response as markdown
+    res.json({ response: response });
   } catch (error) {
     console.error('Error processing query:', error);
     res.status(500).json({ message: 'Error processing query', error: error.message });
