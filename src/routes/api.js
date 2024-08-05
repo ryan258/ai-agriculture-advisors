@@ -5,6 +5,7 @@ const ClimateAnalyst = require('../controllers/climateAnalyst');
 const CommoditiesSpecialist = require('../controllers/commoditiesSpecialist');
 const AgritechResearcher = require('../controllers/agritechResearcher');
 const SupplyChainAnalyst = require('../controllers/supplyChainAnalyst');
+const { logInteraction } = require('../utils/logger');
 
 router.post('/query', async (req, res) => {
   try {
@@ -31,7 +32,10 @@ router.post('/query', async (req, res) => {
         throw new Error('Invalid expert role');
     }
 
-    // Send the response as markdown
+    // Log the interaction
+    await logInteraction(expertRole, query, response);
+
+    // Send the response
     res.json({ response: response });
   } catch (error) {
     console.error('Error processing query:', error);
