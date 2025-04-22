@@ -47,6 +47,23 @@
             border-radius: 4px;
             overflow-x: auto;
         }
+        #roundtable {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        #roundtable h1, #roundtable h2, #roundtable h3 {
+            margin-top: 0;
+        }
+        #roundtable ul, #roundtable ol {
+            padding-left: 20px;
+        }
+        #roundtable pre {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -61,8 +78,10 @@
         <input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain Analyst<br>
         <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
         <button type="submit">Submit Query</button>
+        <button type="button" onclick="submitRoundTable()" style="background-color:#3498db;margin-top:5px;">Round Table Discussion</button>
     </form>
     <div id="response"></div>
+    <div id="roundtable"></div>
 
     <script>
         async function submitQuery() {
@@ -70,6 +89,7 @@
             const expertRoles = Array.from(checkboxes).map(cb => cb.value);
             const query = document.getElementById('query').value;
             const responseElement = document.getElementById('response');
+            document.getElementById('roundtable').innerHTML = '';
 
             if (expertRoles.length === 0) {
                 responseElement.innerHTML = '<p>Please select at least one expert.</p>';
@@ -110,6 +130,52 @@
                 }
             } catch (error) {
                 responseElement.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        async function submitRoundTable() {
+            const checkboxes = document.querySelectorAll('input[name="expertRole"]:checked');
+            const expertRoles = Array.from(checkboxes).map(cb => cb.value);
+            const query = document.getElementById('query').value;
+            const roundtableDiv = document.getElementById('roundtable');
+            document.getElementById('response').innerHTML = '';
+
+            if (expertRoles.length < 2) {
+                roundtableDiv.innerHTML = '<p>Please select at least two experts for a round table discussion.</p>';
+                return;
+            }
+            if (!query.trim()) {
+                roundtableDiv.innerHTML = '<p>Please enter a query.</p>';
+                return;
+            }
+
+            roundtableDiv.innerHTML = '<p>Round table in progress...</p>';
+
+            try {
+                const response = await fetch('/api/roundtable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ expertRoles, query }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let html = '<h2>Round Table Transcript</h2><div style="background:#f4f4f4;padding:10px;border-radius:4px;max-height:300px;overflow-y:auto;">';
+                    for (const msg of data.transcript) {
+                        html += `<strong>${msg.speaker}:</strong> <div style="margin-bottom:8px;">${marked.parse(msg.text)}</div>`;
+                    }
+                    html += '</div>';
+                    html += '<h2>Consensus / Next-level Answer</h2>';
+                    html += `<div style="background:#e8f6ff;padding:10px;border-radius:4px;">${marked.parse(data.finalAnswer)}</div>`;
+                    roundtableDiv.innerHTML = html;
+                } else {
+                    roundtableDiv.innerHTML = `<p>Error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                roundtableDiv.innerHTML = `<p>Error: ${error.message}</p>`;
             }
         }
 

@@ -3,6 +3,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const { marked } = require('marked');
 const apiRoutes = require('./routes/api');
+const roundtableRoutes = require('./routes/roundtable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.use((req, res, next) => {
 
 // API routes
 app.use('/api', apiRoutes);
+app.use('/api/roundtable', roundtableRoutes);
 
 // Serve the HTML file for any other route
 app.get('*', (req, res) => {
