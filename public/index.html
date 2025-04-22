@@ -5,83 +5,171 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agriculture Advisors</title>
     <style>
+        :root {
+            --primary: #009688;
+            --primary-dark: #00695c;
+            --accent: #ffd166;
+            --background: #f5f7fa;
+            --surface: #fff;
+            --text: #232946;
+            --muted: #bfc9d1;
+            --shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+        }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
+            font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            min-height: 100vh;
+            gap: 0;
+        }
+        .sidebar {
+            flex: 1 1 320px;
+            max-width: 340px;
+            background: var(--surface);
+            padding: 40px 24px 24px 24px;
+            box-shadow: 2px 0 8px 0 rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            min-width: 260px;
+        }
+        .main {
+            flex: 2 1 0%;
+            padding: 48px 40px 40px 40px;
+            background: var(--background);
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
         h1 {
-            color: #2c3e50;
+            color: var(--primary-dark);
+            letter-spacing: 1px;
+            margin-bottom: 32px;
+            font-size: 2.3rem;
         }
-        select, textarea, button {
+        form {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin-bottom: 0;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        input[type="checkbox"] {
+            accent-color: var(--primary);
+            margin-right: 8px;
+            transform: scale(1.15);
+        }
+        textarea {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #bdc3c7;
-            border-radius: 4px;
+            padding: 14px;
+            margin: 16px 0 12px 0;
+            border: 1.5px solid var(--muted);
+            border-radius: 8px;
+            min-height: 90px;
+            font-size: 1rem;
+            resize: vertical;
+            background: var(--background);
         }
         button {
-            background-color: #2ecc71;
-            color: white;
+            background: var(--primary);
+            color: #fff;
             border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-right: 12px;
+            margin-top: 6px;
             cursor: pointer;
+            box-shadow: 0 2px 8px 0 rgba(0,150,136,0.08);
+            transition: background 0.2s, box-shadow 0.2s;
         }
-        button:hover {
-            background-color: #27ae60;
+        button[type="button"] {
+            background: var(--accent);
+            color: var(--primary-dark);
         }
-        #response {
-            background-color: #ecf0f1;
-            padding: 15px;
-            border-radius: 4px;
+        button:hover, button:focus {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 16px 0 rgba(0,150,136,0.15);
         }
-        #response h1, #response h2, #response h3 {
-            margin-top: 0;
+        button[type="button"]:hover, button[type="button"]:focus {
+            background: #ffe6a1;
         }
-        #response ul, #response ol {
-            padding-left: 20px;
+        #response, #roundtable {
+            background: var(--surface);
+            padding: 32px 28px;
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+            font-size: 1.07rem;
         }
-        #response pre {
-            background-color: #f9f9f9;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-        #roundtable {
-            background-color: #ecf0f1;
-            padding: 15px;
-            border-radius: 4px;
-        }
+        #response h1, #response h2, #response h3,
         #roundtable h1, #roundtable h2, #roundtable h3 {
             margin-top: 0;
         }
-        #roundtable ul, #roundtable ol {
+        #response ul, #response ol, #roundtable ul, #roundtable ol {
             padding-left: 20px;
         }
-        #roundtable pre {
-            background-color: #f9f9f9;
+        #response pre, #roundtable pre {
+            background: #eaf6f6;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: 8px;
             overflow-x: auto;
+        }
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar, .main {
+                max-width: 100%;
+                padding: 24px 8px;
+            }
+        }
+        @media (max-width: 600px) {
+            .main {
+                padding: 8px 2px;
+            }
+            h1 {
+                font-size: 1.3rem;
+            }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-    <h1>AI Agriculture Advisors</h1>
-    <form id="advisorForm" onsubmit="submitQuery(); return false;">
-        <label><strong>Select one or more experts:</strong></label><br>
-        <input type="checkbox" name="expertRole" value="agriculture" checked> Agricultural Science Expert<br>
-        <input type="checkbox" name="expertRole" value="climate"> Climate Change Impact Analyst<br>
-        <input type="checkbox" name="expertRole" value="commodities"> Commodities Trading Specialist<br>
-        <input type="checkbox" name="expertRole" value="agritech"> AgriTech Innovation Researcher<br>
-        <input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain Analyst<br>
-        <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
-        <button type="submit">Submit Query</button>
-        <button type="button" onclick="submitRoundTable()" style="background-color:#3498db;margin-top:5px;">Round Table Discussion</button>
-    </form>
-    <div id="response"></div>
-    <div id="roundtable"></div>
+    <div class="container">
+        <div class="sidebar">
+            <h1>AI Agriculture Advisors</h1>
+            <form id="advisorForm" onsubmit="submitQuery(); return false;">
+                <label><strong>Select one or more experts:</strong></label><br>
+                <input type="checkbox" name="expertRole" value="agriculture" checked> Agricultural Science Expert<br>
+                <input type="checkbox" name="expertRole" value="climate"> Climate Change Impact Analyst<br>
+                <input type="checkbox" name="expertRole" value="commodities"> Commodities Trading Specialist<br>
+                <input type="checkbox" name="expertRole" value="agritech"> AgriTech Innovation Researcher<br>
+                <input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain Analyst<br>
+                <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
+                <button type="submit">Submit Query</button>
+                <button type="button" onclick="submitRoundTable()">Round Table Discussion</button>
+            </form>
+        </div>
+        <div class="main">
+            <div id="response"></div>
+            <div id="roundtable"></div>
+        </div>
+    </div>
 
     <script>
         async function submitQuery() {
