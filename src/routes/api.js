@@ -9,36 +9,45 @@ const { logInteraction } = require('../utils/logger');
 
 router.post('/query', async (req, res) => {
   try {
-    const { query, expertRole } = req.body;
-    let response;
-
-    switch (expertRole) {
-      case 'agriculture':
-        response = await AgricultureExpert.processQuery(query);
-        break;
-      case 'climate':
-        response = await ClimateAnalyst.processQuery(query);
-        break;
-      case 'commodities':
-        response = await CommoditiesSpecialist.processQuery(query);
-        break;
-      case 'agritech':
-        response = await AgritechResearcher.processQuery(query);
-        break;
-      case 'supplychain':
-        response = await SupplyChainAnalyst.processQuery(query);
-        break;
-      default:
-        throw new Error('Invalid expert role');
+    const { query, expertRoles } = req.body; // expertRoles: array of roles
+    if (!Array.isArray(expertRoles) || expertRoles.length === 0) {
+      return res.status(400).json({ message: 'expertRoles must be a non-empty array.' });
     }
 
-    // Log the interaction
-    await logInteraction(expertRole, query, response);
+    // Map role string to expert instance
+    const expertMap = {
+      agriculture: AgricultureExpert,
+      climate: ClimateAnalyst,
+      commodities: CommoditiesSpecialist,
+      agritech: AgritechResearcher,
+      supplychain: SupplyChainAnalyst
+    };
 
-    // Send the response
-    res.json({ response: response });
+    // Prepare promises for each expert
+    const responsePromises = expertRoles.map(async (role) => {
+      const expert = expertMap[role];
+      if (!expert) {
+        return { role, error: 'Invalid expert role' };
+      }
+      try {
+        const resp = await expert.processQuery(query);
+        await logInteraction(role, query, resp);
+        return { role, response: resp };
+      } catch (err) {
+        return { role, error: err.message };
+      }
+    });
+
+    const results = await Promise.all(responsePromises);
+    // Structure as { role: response/error }
+    const aggregated = {};
+    results.forEach(({ role, response, error }) => {
+      aggregated[role] = error ? { error } : { response };
+    });
+
+    res.json({ responses: aggregated });
   } catch (error) {
-    console.error('Error processing query:', error);
+    console.error('Error processing multi-expert query:', error);
     res.status(500).json({ message: 'Error processing query', error: error.message });
   }
 });

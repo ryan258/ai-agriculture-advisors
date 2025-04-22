@@ -52,22 +52,33 @@
 </head>
 <body>
     <h1>AI Agriculture Advisors</h1>
-    <select id="expertRole">
-        <option value="agriculture">Agricultural Science Expert</option>
-        <option value="climate">Climate Change Impact Analyst</option>
-        <option value="commodities">Commodities Trading Specialist</option>
-        <option value="agritech">AgriTech Innovation Researcher</option>
-        <option value="supplychain">Food Supply Chain Analyst</option>
-    </select>
-    <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
-    <button onclick="submitQuery()">Submit Query</button>
+    <form id="advisorForm" onsubmit="submitQuery(); return false;">
+        <label><strong>Select one or more experts:</strong></label><br>
+        <input type="checkbox" name="expertRole" value="agriculture" checked> Agricultural Science Expert<br>
+        <input type="checkbox" name="expertRole" value="climate"> Climate Change Impact Analyst<br>
+        <input type="checkbox" name="expertRole" value="commodities"> Commodities Trading Specialist<br>
+        <input type="checkbox" name="expertRole" value="agritech"> AgriTech Innovation Researcher<br>
+        <input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain Analyst<br>
+        <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
+        <button type="submit">Submit Query</button>
+    </form>
     <div id="response"></div>
 
     <script>
         async function submitQuery() {
-            const expertRole = document.getElementById('expertRole').value;
+            const checkboxes = document.querySelectorAll('input[name="expertRole"]:checked');
+            const expertRoles = Array.from(checkboxes).map(cb => cb.value);
             const query = document.getElementById('query').value;
             const responseElement = document.getElementById('response');
+
+            if (expertRoles.length === 0) {
+                responseElement.innerHTML = '<p>Please select at least one expert.</p>';
+                return;
+            }
+            if (!query.trim()) {
+                responseElement.innerHTML = '<p>Please enter a query.</p>';
+                return;
+            }
 
             responseElement.innerHTML = '<p>Loading...</p>';
 
@@ -77,19 +88,39 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ expertRole, query }),
+                    body: JSON.stringify({ expertRoles, query }),
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Convert markdown to HTML and display
-                    responseElement.innerHTML = marked.parse(data.response);
+                    // Display each expert's response
+                    let html = '';
+                    for (const role of expertRoles) {
+                        html += `<h3>${getExpertLabel(role)}</h3>`;
+                        if (data.responses[role]?.error) {
+                            html += `<p style='color:red;'>Error: ${data.responses[role].error}</p>`;
+                        } else {
+                            html += `<div>${marked.parse(data.responses[role].response)}</div>`;
+                        }
+                    }
+                    responseElement.innerHTML = html;
                 } else {
                     responseElement.innerHTML = `<p>Error: ${data.message}</p>`;
                 }
             } catch (error) {
                 responseElement.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        function getExpertLabel(role) {
+            switch (role) {
+                case 'agriculture': return 'Agricultural Science Expert';
+                case 'climate': return 'Climate Change Impact Analyst';
+                case 'commodities': return 'Commodities Trading Specialist';
+                case 'agritech': return 'AgriTech Innovation Researcher';
+                case 'supplychain': return 'Food Supply Chain Analyst';
+                default: return role;
             }
         }
     </script>
