@@ -116,22 +116,24 @@ A comprehensive enhancement plan to make this project more robust, scalable, and
 
 ---
 
-## 🎨 User Experience (UX) & UI
+### User Experience (UX) & UI
 
-### Frontend Improvements
-- [ ] **Add loading indicators**: Better feedback during LLM generation (progress bars, animated states)
-- [ ] **Implement query history**: Show previous queries in sidebar
-- [ ] **Add query suggestions**: Pre-populated common agricultural questions
-- [ ] **Improve mobile responsiveness**: Test and optimize for various screen sizes
-- [ ] **Add dark mode**: Theme toggle for user preference
-- [ ] **Response formatting**: Better visualization for tables, charts, and structured data
-- [ ] **Export functionality**: Download responses as PDF or markdown
+#### Frontend Improvements
+- [x] **Frontend Refactoring**: Separate CSS and JS from HTML
+- [x] **Loading Indicators**: Visual feedback during API calls with animated spinner
+- [x] **Query History**: Persist last 10 queries in localStorage
+- [x] **Query Suggestions**: Offer 5 common agricultural queries as quick-start
+- [x] **Dark Mode**: Toggle between light/dark themes with persistence
+- [x] **Export Functionality**: Download expert advice as markdown file
+- [x] **Improved Layout**: Card-based UI, sticky sidebar, better spacing
+- [ ] **Mobile Responsiveness**: Test and optimize for various screen sizes
+- [ ] **Enhanced Visualizations**: Better rendering for tables, charts, structured data
+- [ ] **PDF Export**: Add PDF export option alongside markdown
 
 ### User Management
 - [ ] **User Authentication**: Implement JWT-based auth
 - [ ] **User Profiles**: Store preferences, favorite experts, saved queries
 - [ ] **Session Management**: Persistent chat sessions across page reloads
-- [ ] **Personalized Recommendations**: Suggest relevant experts based on query history
 
 ---
 

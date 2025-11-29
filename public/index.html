@@ -5,328 +5,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agriculture Advisors</title>
-    <style>
-        :root {
-            --primary: #009688;
-            --primary-dark: #00695c;
-            --accent: #ffd166;
-            --background: #f5f7fa;
-            --surface: #fff;
-            --text: #232946;
-            --muted: #bfc9d1;
-            --shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: row;
-            max-width: 1200px;
-            margin: 0 auto;
-            min-height: 100vh;
-            gap: 0;
-        }
-
-        .sidebar {
-            flex: 1 1 320px;
-            max-width: 340px;
-            background: var(--surface);
-            padding: 40px 24px 24px 24px;
-            box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.03);
-            display: flex;
-            flex-direction: column;
-            min-width: 260px;
-        }
-
-        .main {
-            flex: 2 1 0%;
-            padding: 48px 40px 40px 40px;
-            background: var(--background);
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        h1 {
-            color: var(--primary-dark);
-            letter-spacing: 1px;
-            margin-bottom: 32px;
-            font-size: 2.3rem;
-        }
-
-        form {
-            background: none;
-            padding: 0;
-            border-radius: 0;
-            box-shadow: none;
-            margin-bottom: 0;
-        }
-
-        label {
-            font-weight: 600;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        input[type="checkbox"] {
-            accent-color: var(--primary);
-            margin-right: 8px;
-            transform: scale(1.15);
-        }
-
-        textarea {
-            width: 100%;
-            padding: 14px;
-            margin: 16px 0 12px 0;
-            border: 1.5px solid var(--muted);
-            border-radius: 8px;
-            min-height: 90px;
-            font-size: 1rem;
-            resize: vertical;
-            background: var(--background);
-        }
-
-        button {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-right: 12px;
-            margin-top: 6px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px 0 rgba(0, 150, 136, 0.08);
-            transition: background 0.2s, box-shadow 0.2s;
-        }
-
-        button[type="button"] {
-            background: var(--accent);
-            color: var(--primary-dark);
-        }
-
-        button:hover,
-        button:focus {
-            background: var(--primary-dark);
-            box-shadow: 0 4px 16px 0 rgba(0, 150, 136, 0.15);
-        }
-
-        button[type="button"]:hover,
-        button[type="button"]:focus {
-            background: #ffe6a1;
-        }
-
-        #response,
-        #roundtable {
-            background: var(--surface);
-            padding: 32px 28px;
-            border-radius: 18px;
-            box-shadow: var(--shadow);
-            margin-bottom: 18px;
-            font-size: 1.07rem;
-        }
-
-        #response h1,
-        #response h2,
-        #response h3,
-        #roundtable h1,
-        #roundtable h2,
-        #roundtable h3 {
-            margin-top: 0;
-        }
-
-        #response ul,
-        #response ol,
-        #roundtable ul,
-        #roundtable ol {
-            padding-left: 20px;
-        }
-
-        #response pre,
-        #roundtable pre {
-            background: #eaf6f6;
-            padding: 10px;
-            border-radius: 8px;
-            overflow-x: auto;
-        }
-
-        @media (max-width: 900px) {
-            .container {
-                flex-direction: column;
-            }
-
-            .sidebar,
-            .main {
-                max-width: 100%;
-                padding: 24px 8px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .main {
-                padding: 8px 2px;
-            }
-
-            h1 {
-                font-size: 1.3rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
     <div class="container">
         <div class="sidebar">
-            <h1>AI Agriculture Advisors</h1>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Agri Advisors</h1>
+                <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">🌙</button>
+            </div>
+
             <form id="advisorForm" onsubmit="submitQuery(); return false;">
-                <label><strong>Select one or more experts:</strong></label><br>
-                <input type="checkbox" name="expertRole" value="agriculture" checked> Agricultural Science Expert<br>
-                <input type="checkbox" name="expertRole" value="climate"> Climate Change Impact Analyst<br>
-                <input type="checkbox" name="expertRole" value="commodities"> Commodities Trading Specialist<br>
-                <input type="checkbox" name="expertRole" value="agritech"> AgriTech Innovation Researcher<br>
-                <label><input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain
-                    Analyst</label><br>
-                <label><input type="checkbox" name="expertRole" value="soil"> Soil Health Specialist</label><br>
-                <label><input type="checkbox" name="expertRole" value="pest"> Pest & Disease Management
-                    Expert</label><br>
-                <label><input type="checkbox" name="expertRole" value="irrigation"> Irrigation & Water Management
-                    Specialist</label><br>
-                <label><input type="checkbox" name="expertRole" value="organic"> Organic Farming Consultant</label><br>
-                <label><input type="checkbox" name="expertRole" value="economics"> Agricultural Economics
-                    Advisor</label><br>
+                <label><strong>Select Experts:</strong></label>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="agriculture" checked>
+                    Agricultural Science</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="climate"> Climate Analyst
+                </div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="commodities"> Commodities
+                    Specialist</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="agritech"> AgriTech
+                    Researcher</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="supplychain"> Supply Chain
+                    Analyst</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="soil"> Soil Health
+                    Specialist</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="pest"> Pest & Disease
+                    Expert</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="irrigation"> Irrigation
+                    Specialist</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="organic"> Organic
+                    Consultant</div>
+                <div class="expert-checkbox"><input type="checkbox" name="expertRole" value="economics"> Economics
+                    Advisor</div>
+
                 <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
-                <button type="submit">Submit Query</button>
-                <button type="button" onclick="submitRoundTable()">Round Table Discussion</button>
+
+                <div class="suggestions" id="suggestions">
+                    <!-- Suggestions injected here -->
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit">Submit Query</button>
+                    <button type="button" class="secondary" onclick="submitRoundTable()">Round Table</button>
+                </div>
             </form>
+
+            <div class="history-section">
+                <label><strong>Recent Queries:</strong></label>
+                <div id="historyList">
+                    <!-- History items injected here -->
+                </div>
+            </div>
         </div>
+
         <div class="main">
             <div id="response"></div>
             <div id="roundtable"></div>
         </div>
     </div>
 
-    <script>
-        async function submitQuery() {
-            const checkboxes = document.querySelectorAll('input[name="expertRole"]:checked');
-            const expertRoles = Array.from(checkboxes).map(cb => cb.value);
-            const query = document.getElementById('query').value;
-            const responseElement = document.getElementById('response');
-            document.getElementById('roundtable').innerHTML = '';
-
-            if (expertRoles.length === 0) {
-                responseElement.innerHTML = '<p>Please select at least one expert.</p>';
-                return;
-            }
-            if (!query.trim()) {
-                responseElement.innerHTML = '<p>Please enter a query.</p>';
-                return;
-            }
-
-            responseElement.innerHTML = '<p>Loading...</p>';
-
-            try {
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ expertRoles, query }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Display each expert's response
-                    let html = '';
-                    for (const role of expertRoles) {
-                        html += `<h3>${getExpertLabel(role)}</h3>`;
-                        if (data.responses[role]?.error) {
-                            html += `<p style='color:red;'>Error: ${data.responses[role].error}</p>`;
-                        } else {
-                            html += `<div>${marked.parse(data.responses[role].response)}</div>`;
-                        }
-                    }
-                    responseElement.innerHTML = html;
-                } else {
-                    responseElement.innerHTML = `<p>Error: ${data.message}</p>`;
-                }
-            } catch (error) {
-                responseElement.innerHTML = `<p>Error: ${error.message}</p>`;
-            }
-        }
-
-        async function submitRoundTable() {
-            const checkboxes = document.querySelectorAll('input[name="expertRole"]:checked');
-            const expertRoles = Array.from(checkboxes).map(cb => cb.value);
-            const query = document.getElementById('query').value;
-            const roundtableDiv = document.getElementById('roundtable');
-            document.getElementById('response').innerHTML = '';
-
-            if (expertRoles.length < 2) {
-                roundtableDiv.innerHTML = '<p>Please select at least two experts for a round table discussion.</p>';
-                return;
-            }
-            if (!query.trim()) {
-                roundtableDiv.innerHTML = '<p>Please enter a query.</p>';
-                return;
-            }
-
-            roundtableDiv.innerHTML = '<p>Round table in progress...</p>';
-
-            try {
-                const response = await fetch('/api/roundtable', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ expertRoles, query }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    let html = '<h2>Round Table Transcript</h2><div style="background:#f4f4f4;padding:10px;border-radius:4px;max-height:300px;overflow-y:auto;">';
-                    for (const msg of data.transcript) {
-                        html += `<strong>${msg.speaker}:</strong> <div style="margin-bottom:8px;">${marked.parse(msg.text)}</div>`;
-                    }
-                    html += '</div>';
-                    html += '<h2>Consensus / Next-level Answer</h2>';
-                    html += `<div style="background:#e8f6ff;padding:10px;border-radius:4px;">${marked.parse(data.finalAnswer)}</div>`;
-                    roundtableDiv.innerHTML = html;
-                } else {
-                    roundtableDiv.innerHTML = `<p>Error: ${data.message}</p>`;
-                }
-            } catch (error) {
-                roundtableDiv.innerHTML = `<p>Error: ${error.message}</p>`;
-            }
-        }
-
-        function getExpertLabel(role) {
-            switch (role) {
-                case 'agriculture': return 'Agricultural Science Expert';
-                case 'climate': return 'Climate Change Impact Analyst';
-                case 'commodities': return 'Commodities Trading Specialist';
-                case 'agritech': return 'AgriTech Innovation Researcher';
-                case 'supplychain': return 'Food Supply Chain Analyst';
-                case 'soil': return 'Soil Health Specialist';
-                case 'pest': return 'Pest & Disease Management Expert';
-                case 'irrigation': return 'Irrigation & Water Management Specialist';
-                case 'organic': return 'Organic Farming Consultant';
-                case 'economics': return 'Agricultural Economics Advisor';
-                default: return role;
-            }
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 
 </html>
