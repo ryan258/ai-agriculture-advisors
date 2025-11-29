@@ -1,5 +1,5 @@
-const API_URL = 'http://localhost:11434/api/generate';
-const MODEL_NAME = 'llama3.1:latest';
+const API_URL = process.env.LLAMA_API_URL || 'http://localhost:11434/api/generate';
+const MODEL_NAME = process.env.LLAMA_MODEL_NAME || 'llama3.1:latest';
 
 class LlamaService {
   async generateResponse(prompt) {

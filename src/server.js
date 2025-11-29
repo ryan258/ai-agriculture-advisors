@@ -1,26 +1,35 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
-const { marked } = require('marked');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+const helmet = require('helmet');
+const connectDB = require('./config/database');
 const apiRoutes = require('./routes/api');
 const roundtableRoutes = require('./routes/roundtable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+// Connect to Database
+connectDB();
+
+// Security Middleware
+app.use(helmet());
+app.use(cors());
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+// Middleware
+app.use(bodyParser.json({ limit: '1mb' })); // Limit request size
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, '../public')));
-
-// Middleware to convert markdown to HTML
-app.use((req, res, next) => {
-  res.markdown = (md) => {
-    const html = marked(md);
-    res.send(html);
-  };
-  next();
-});
 
 // API routes
 app.use('/api', apiRoutes);
