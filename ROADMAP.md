@@ -13,22 +13,22 @@ Personal project enhancement plan.
 ## 🎯 Now (Worth doing soon)
 
 ### Testing & Code Quality
-- [ ] **Add basic tests**: Test core functionality (Jest)
+- [x] **Add basic tests**: Test core functionality (Jest)
   - Test llamaService with different providers
   - Test expert registry
   - Test API endpoints with sample queries
-- [ ] **Add ESLint**: Keep code clean and consistent
+- [x] **Add ESLint**: Keep code clean and consistent
   - Use eslint-config-standard or airbnb
   - Auto-fix on save
 
 ### LLM Provider Flexibility
-- [ ] **LLM provider abstraction**: Switch between OpenRouter, Anthropic, OpenAI easily
+- [x] **LLM provider abstraction**: Switch between OpenRouter, Anthropic, OpenAI easily
   - Support multiple providers in config
   - Fallback to backup provider on failure
   - Easy provider switching via .env
 
 ### Mobile Experience
-- [ ] **Make it mobile responsive**: Use on phone/tablet
+- [x] **Make it mobile responsive**: Use on phone/tablet
   - Responsive layout
   - Touch-friendly controls
   - Mobile-optimized sidebar
