@@ -5,12 +5,12 @@ const { logInteraction } = require('../utils/logger');
 
 const { validateRoundtableRequest } = require('../middleware/validateRequest');
 
-router.post('/', validateRoundtableRequest, async (req, res) => {
+router.post('/', validateRoundtableRequest, async(req, res) => {
   try {
     const { query, expertRoles, rounds = 3 } = req.body;
 
     // Initialize transcript
-    let transcript = [];
+    const transcript = [];
 
     // Simulate discussion rounds
     for (let round = 0; round < rounds; round++) {

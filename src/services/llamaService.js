@@ -1,9 +1,5 @@
 const { logger } = require('../utils/logger');
 
-const API_URL = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL_NAME = process.env.OPENROUTER_MODEL_NAME || 'meta-llama/llama-3.1-8b-instruct:free';
-const API_KEY = process.env.OPENROUTER_API_KEY;
-
 class LlamaService {
   constructor(apiUrl, modelName, apiKey) {
     this.apiUrl = apiUrl || process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
@@ -21,9 +17,9 @@ class LlamaService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'HTTP-Referer': 'https://github.com/yourusername/ai-agriculture-advisors',
-          'X-Title': 'AI Agriculture Advisors',
+          'X-Title': 'AI Agriculture Advisors'
         },
         body: JSON.stringify({
           model: this.modelName,
@@ -34,7 +30,7 @@ class LlamaService {
             }
           ],
           stream: false
-        }),
+        })
       });
 
       if (!response.ok) {
@@ -47,7 +43,7 @@ class LlamaService {
       return data.choices[0].message.content;
     } catch (error) {
       logger.error(`Error calling OpenRouter API: ${error.message}`);
-      throw new Error('Failed to generate response from LLM via OpenRouter');
+      throw new Error(`Failed to generate response from LLM via OpenRouter: ${error.message}`);
     }
   }
 }

@@ -45,7 +45,7 @@ A production-ready Node.js application that leverages local Large Language Model
 
 ## Prerequisites
 
-- **Node.js** (v14 or later recommended)
+- **Node.js** (v18 or later required for native fetch)
 - **npm** (comes with Node.js)
 - **MongoDB** (optional, for future features)
 - **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)

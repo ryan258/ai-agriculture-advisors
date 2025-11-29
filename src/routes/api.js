@@ -5,12 +5,12 @@ const { logInteraction } = require('../utils/logger');
 
 const { validateQueryRequest } = require('../middleware/validateRequest');
 
-router.post('/query', validateQueryRequest, async (req, res) => {
+router.post('/query', validateQueryRequest, async(req, res) => {
   try {
     const { query, expertRoles } = req.body; // expertRoles: array of roles
 
     // Prepare promises for each expert
-    const responsePromises = expertRoles.map(async (role) => {
+    const responsePromises = expertRoles.map(async(role) => {
       const expertEntry = expertMap[role];
       if (!expertEntry) {
         return { role, error: 'Invalid expert role' };

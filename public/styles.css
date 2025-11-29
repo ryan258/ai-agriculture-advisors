@@ -287,6 +287,7 @@ code {
     transform: scale(1.1);
 }
 
+/* Mobile Responsiveness */
 @media (max-width: 900px) {
     .container {
         flex-direction: column;
@@ -294,7 +295,33 @@ code {
 
     .sidebar {
         height: auto;
-        position: static;
+        position: relative;
+        width: 100%;
+        box-sizing: border-box;
+        overflow-y: visible;
+    }
+
+    .main {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    button {
+        width: 100%;
+    }
+
+    .card {
+        padding: 20px;
     }
 }
 
