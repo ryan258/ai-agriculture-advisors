@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const connectDB = require('./config/database');
 const apiRoutes = require('./routes/api');
 const roundtableRoutes = require('./routes/roundtable');
+const { logger } = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Error Handling Middleware
+app.use(require('./middleware/errorHandler'));
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });

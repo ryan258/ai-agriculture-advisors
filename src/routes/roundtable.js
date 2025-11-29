@@ -1,30 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const AgricultureExpert = require('../controllers/agricultureExpert');
-const ClimateAnalyst = require('../controllers/climateAnalyst');
-const CommoditiesSpecialist = require('../controllers/commoditiesSpecialist');
-const AgritechResearcher = require('../controllers/agritechResearcher');
-const SupplyChainAnalyst = require('../controllers/supplyChainAnalyst');
+const expertMap = require('../config/experts');
 const { logInteraction } = require('../utils/logger');
 
-// Helper to map role string to expert instance and label
-const expertMap = {
-  agriculture: { instance: AgricultureExpert, label: 'Agricultural Science Expert' },
-  climate: { instance: ClimateAnalyst, label: 'Climate Change Impact Analyst' },
-  commodities: { instance: CommoditiesSpecialist, label: 'Commodities Trading Specialist' },
-  agritech: { instance: AgritechResearcher, label: 'AgriTech Innovation Researcher' },
-  supplychain: { instance: SupplyChainAnalyst, label: 'Food Supply Chain Analyst' }
-};
+const { validateRoundtableRequest } = require('../middleware/validateRequest');
 
-router.post('/', async (req, res) => {
+router.post('/', validateRoundtableRequest, async (req, res) => {
   try {
     const { query, expertRoles, rounds = 3 } = req.body;
-    if (!Array.isArray(expertRoles) || expertRoles.length < 2) {
-      return res.status(400).json({ message: 'At least two experts are required for a round table discussion.' });
-    }
-    if (!query || !query.trim()) {
-      return res.status(400).json({ message: 'Query is required.' });
-    }
 
     // Initialize transcript
     let transcript = [];
@@ -42,7 +25,7 @@ router.post('/', async (req, res) => {
         try {
           const response = await expertEntry.instance.processQuery(discussionPrompt);
           transcript.push({ speaker: expertEntry.label, text: response });
-          await logInteraction(role, `RoundTable|${query}|Round:${round+1}`, response);
+          await logInteraction(role, `RoundTable|${query}|Round:${round + 1}`, response);
         } catch (err) {
           transcript.push({ speaker: expertEntry.label, text: 'Error: ' + err.message });
         }

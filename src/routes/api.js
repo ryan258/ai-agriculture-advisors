@@ -1,36 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const AgricultureExpert = require('../controllers/agricultureExpert');
-const ClimateAnalyst = require('../controllers/climateAnalyst');
-const CommoditiesSpecialist = require('../controllers/commoditiesSpecialist');
-const AgritechResearcher = require('../controllers/agritechResearcher');
-const SupplyChainAnalyst = require('../controllers/supplyChainAnalyst');
+const expertMap = require('../config/experts');
 const { logInteraction } = require('../utils/logger');
 
-router.post('/query', async (req, res) => {
+const { validateQueryRequest } = require('../middleware/validateRequest');
+
+router.post('/query', validateQueryRequest, async (req, res) => {
   try {
     const { query, expertRoles } = req.body; // expertRoles: array of roles
-    if (!Array.isArray(expertRoles) || expertRoles.length === 0) {
-      return res.status(400).json({ message: 'expertRoles must be a non-empty array.' });
-    }
-
-    // Map role string to expert instance
-    const expertMap = {
-      agriculture: AgricultureExpert,
-      climate: ClimateAnalyst,
-      commodities: CommoditiesSpecialist,
-      agritech: AgritechResearcher,
-      supplychain: SupplyChainAnalyst
-    };
 
     // Prepare promises for each expert
     const responsePromises = expertRoles.map(async (role) => {
-      const expert = expertMap[role];
-      if (!expert) {
+      const expertEntry = expertMap[role];
+      if (!expertEntry) {
         return { role, error: 'Invalid expert role' };
       }
       try {
-        const resp = await expert.processQuery(query);
+        const resp = await expertEntry.instance.processQuery(query);
         await logInteraction(role, query, resp);
         return { role, response: resp };
       } catch (err) {

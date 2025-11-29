@@ -3,38 +3,38 @@
 A comprehensive enhancement plan to make this project more robust, scalable, and valuable to users.
 
 **Last Updated:** November 29, 2025
-**Status:** Code review completed, critical issues identified
+**Status:** Critical P0 issues addressed (8/10 complete), ready for testing
 
 ---
 
 ## 🚨 Critical Issues (Fix Immediately)
 
 ### Configuration & Environment
-- [ ] **Fix environment variable loading**: Add `require('dotenv').config()` to server.js (currently dotenv is installed but never loaded)
-- [ ] **Create .env.example**: Provide template for environment configuration
-- [ ] **Update llamaService.js**: Replace hardcoded API_URL and MODEL_NAME with environment variables from process.env
-- [ ] **Initialize MongoDB connection**: Add `connectDB()` call in server.js or remove unused database.js and mongoose dependency
+- [x] **Fix environment variable loading**: Add `require('dotenv').config()` to server.js (currently dotenv is installed but never loaded)
+- [x] **Create .env.example**: Provide template for environment configuration
+- [x] **Update llamaService.js**: Replace hardcoded API_URL and MODEL_NAME with environment variables from process.env
+- [x] **Initialize MongoDB connection**: Add `connectDB()` call in server.js or remove unused database.js and mongoose dependency
 
 ### Security Vulnerabilities
-- [ ] **Add input validation middleware**: Sanitize user queries to prevent injection attacks
-- [ ] **Implement rate limiting**: Use express-rate-limit to prevent API abuse
-- [ ] **Add CORS configuration**: Configure appropriate CORS headers if needed
-- [ ] **Add request size limits**: Prevent oversized payloads
+- [x] **Add input validation middleware**: Sanitize user queries to prevent injection attacks
+- [x] **Implement rate limiting**: Use express-rate-limit to prevent API abuse
+- [x] **Add CORS configuration**: Configure appropriate CORS headers if needed
+- [x] **Add request size limits**: Prevent oversized payloads
 
 ### Code Quality Issues
-- [ ] **Fix deprecated mongoose options**: Remove useNewUrlParser and useUnifiedTopology from database.js (deprecated in mongoose 6+)
-- [ ] **Remove unused middleware**: Delete or implement the markdown middleware in server.js (lines 16-23, currently unused)
-- [ ] **Replace console.log**: Use proper logging framework (e.g., winston or pino) instead of console.log for production
+- [x] **Fix deprecated mongoose options**: Remove useNewUrlParser and useUnifiedTopology from database.js (deprecated in mongoose 6+)
+- [x] **Remove unused middleware**: Delete or implement the markdown middleware in server.js (lines 16-23, currently unused)
+- [x] **Replace console.log**: Use proper logging framework (e.g., winston or pino) instead of console.log for production
 
 ---
 
 ## ⚠️ High Priority Improvements
 
 ### Architecture & Code Quality
-- [ ] **Centralize expert mapping**: Create shared expert registry to eliminate duplication between api.js and roundtable.js
+- [x] **Centralize expert mapping**: Create shared expert registry to eliminate duplication between api.js and roundtable.js
 - [ ] **Add request validation middleware**: Extract validation logic into reusable middleware (e.g., using express-validator or joi)
-- [ ] **Implement dependency injection**: Decouple controllers from llamaService for better testability
-- [ ] **Add error handling middleware**: Centralized error handling for consistent API responses
+- [x] **Implement dependency injection**: Decouple controllers from llamaService for better testability
+- [x] **Add error handling middleware**: Centralized error handling for consistent API responses
 - [ ] **Create LLM provider abstraction**: Abstract LLM interface to support multiple providers (Ollama, OpenAI, Anthropic, etc.)
 
 ### Testing & Quality Assurance
@@ -53,6 +53,16 @@ A comprehensive enhancement plan to make this project more robust, scalable, and
 ---
 
 ## ✅ Recently Completed Features
+
+### Latest Updates (Nov 29, 2025)
+- ✅ **Environment Configuration**: Proper dotenv loading and .env.example template
+- ✅ **Security Hardening**: Added helmet.js, CORS, and rate limiting (100 req/15min)
+- ✅ **Database Connection**: MongoDB initialization in server.js
+- ✅ **Code Modernization**: Removed deprecated mongoose options and unused middleware
+- ✅ **Request Protection**: Added payload size limits (1MB)
+- ✅ **Configuration Management**: Environment variables for LLM API and model selection
+
+### Previous Features
 - ✅ **Multi-Expert Collaboration**: Users can consult multiple experts in parallel (/api/query endpoint)
 - ✅ **Roundtable Discussion**: Collaborative multi-round expert discussions implemented (/api/roundtable endpoint)
 - ✅ **Markdown Rendering**: Client-side markdown parsing for formatted responses
@@ -178,7 +188,7 @@ A comprehensive enhancement plan to make this project more robust, scalable, and
 - [ ] **Input sanitization**: Validate and escape all user inputs
 - [ ] **Add HTTPS enforcement**: Redirect HTTP to HTTPS in production
 - [ ] **Implement CSRF protection**: Use csurf middleware
-- [ ] **Add security headers**: Use helmet.js for security best practices
+- [x] **Add security headers**: Use helmet.js for security best practices
 - [ ] **Secrets management**: Use vault or cloud secret managers (not .env in production)
 
 ### Reliability & Error Handling
