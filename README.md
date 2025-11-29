@@ -47,7 +47,7 @@ A production-ready Node.js application that leverages local Large Language Model
 
 - **Node.js** (v18 or later required for native fetch)
 - **npm** (comes with Node.js)
-- **MongoDB** (optional, for future features)
+
 - **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)
 
 ## Installation
@@ -248,7 +248,7 @@ ai-agriculture-advisors/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | `3000` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/ai-agriculture-advisors` |
+| `LLM_PROVIDER` | LLM provider to use | `openrouter` |
 | `OPENROUTER_API_KEY` | Your OpenRouter API key | *Required* |
 | `OPENROUTER_API_URL` | OpenRouter API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
 | `OPENROUTER_MODEL_NAME` | LLM model to use | `meta-llama/llama-3.1-8b-instruct:free` |
@@ -368,22 +368,11 @@ const expertMap = {
 - Ensure you have network access to openrouter.ai
 - Try switching to a free model: `meta-llama/llama-3.1-8b-instruct:free`
 
-### MongoDB Connection Failed
-
-**Error:** `MongoDB connection error`
-
-**Solutions:**
-- Start MongoDB: `mongod`
-- Verify connection string in `.env`
-- Or comment out `connectDB()` in `server.js` if not using database features
-
 ### Rate Limit Exceeded
 
 **Error:** `Too Many Requests`
 
 **Solution:**
-- Wait 15 minutes for rate limit reset
-- Adjust limits in `server.js` if needed for development
 
 ### Out of Credits
 

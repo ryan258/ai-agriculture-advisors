@@ -5,16 +5,12 @@ const bodyParser = require('body-parser');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const helmet = require('helmet');
-const connectDB = require('./config/database');
 const apiRoutes = require('./routes/api');
 const roundtableRoutes = require('./routes/roundtable');
 const { logger } = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Connect to Database
-connectDB();
 
 // Security Middleware
 app.use(helmet());

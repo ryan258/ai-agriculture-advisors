@@ -26,7 +26,6 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "marked": "^13.0.3",
-    "mongoose": "^8.5.2",
     "winston": "^3.18.3"
   },
   "devDependencies": {
