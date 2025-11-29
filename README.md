@@ -48,7 +48,7 @@ A production-ready Node.js application that leverages local Large Language Model
 - **Node.js** (v14 or later recommended)
 - **npm** (comes with Node.js)
 - **MongoDB** (optional, for future features)
-- **Ollama** running llama3.1:latest (or compatible LLM server)
+- **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)
 
 ## Installation
 
@@ -65,28 +65,31 @@ cd ai-agriculture-advisors
 npm install
 ```
 
-### 3. Configure Environment
+### 3. Get OpenRouter API Key
+
+1. Visit [https://openrouter.ai/keys](https://openrouter.ai/keys)
+2. Sign up or log in (GitHub OAuth supported)
+3. Create a new API key
+4. Copy your key (starts with `sk-or-v1-...`)
+
+**Free tier includes $1 of credits and access to free models.**
+
+### 4. Configure Environment
 
 Create a `.env` file in the root directory:
 
 ```env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/ai-agriculture-advisors
-LLAMA_API_URL=http://localhost:11434/api/generate
-LLAMA_MODEL_NAME=llama3.1:latest
 NODE_ENV=development
+
+# OpenRouter Configuration
+OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
+OPENROUTER_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
 ```
 
-See `.env.example` for a complete template.
-
-### 4. Start Ollama
-
-Ensure Ollama is running with llama3.1:
-
-```bash
-ollama serve
-ollama pull llama3.1:latest
-```
+See `.env.example` for a complete template with model options.
 
 ### 5. Start the Application
 
@@ -246,9 +249,26 @@ ai-agriculture-advisors/
 |----------|-------------|---------|
 | `PORT` | Server port | `3000` |
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/ai-agriculture-advisors` |
-| `LLAMA_API_URL` | Ollama API endpoint | `http://localhost:11434/api/generate` |
-| `LLAMA_MODEL_NAME` | LLM model to use | `llama3.1:latest` |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key | *Required* |
+| `OPENROUTER_API_URL` | OpenRouter API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
+| `OPENROUTER_MODEL_NAME` | LLM model to use | `meta-llama/llama-3.1-8b-instruct:free` |
 | `NODE_ENV` | Environment mode | `development` |
+
+### Supported Models
+
+OpenRouter provides access to 100+ models. Popular options:
+
+**Free Models:**
+- `meta-llama/llama-3.1-8b-instruct:free` (Default)
+- `google/gemini-flash-1.5`
+
+**Paid Models (require credits):**
+- `anthropic/claude-3-sonnet` - Best for complex reasoning
+- `openai/gpt-4-turbo` - General purpose, high quality
+- `meta-llama/llama-3.1-70b-instruct` - Large, powerful
+- `google/gemini-pro-1.5` - Fast and capable
+
+See the full list at [https://openrouter.ai/models](https://openrouter.ai/models)
 
 ### Logging
 
@@ -331,14 +351,22 @@ const expertMap = {
 
 ## Troubleshooting
 
-### Ollama Connection Issues
+### OpenRouter API Issues
 
-**Error:** `Failed to generate response from LLaMA model`
+**Error:** `OPENROUTER_API_KEY is not set in environment variables`
 
 **Solutions:**
-- Ensure Ollama is running: `ollama serve`
-- Verify model is installed: `ollama list`
-- Check API URL in `.env` matches Ollama endpoint
+- Create a `.env` file (copy from `.env.example`)
+- Add your API key from https://openrouter.ai/keys
+- Restart the server after updating `.env`
+
+**Error:** `Failed to generate response from LLM via OpenRouter`
+
+**Solutions:**
+- Verify your API key is valid at https://openrouter.ai/keys
+- Check your credit balance at https://openrouter.ai/account
+- Ensure you have network access to openrouter.ai
+- Try switching to a free model: `meta-llama/llama-3.1-8b-instruct:free`
 
 ### MongoDB Connection Failed
 
@@ -356,6 +384,15 @@ const expertMap = {
 **Solution:**
 - Wait 15 minutes for rate limit reset
 - Adjust limits in `server.js` if needed for development
+
+### Out of Credits
+
+**Error:** HTTP 402 or quota exceeded errors
+
+**Solutions:**
+- Check usage at https://openrouter.ai/activity
+- Add credits to your account
+- Switch to a free model
 
 ## API Rate Limits
 
@@ -390,10 +427,11 @@ For production deployment, additionally consider:
 
 ### Optimization Tips
 
-1. Use faster LLM models for development (e.g., `llama3.2:1b`)
-2. Implement response caching for common queries
+1. Use faster LLM models for development (e.g., `google/gemini-flash-1.5`)
+2. Implement response caching for common queries to reduce API costs
 3. Enable MongoDB for persistent logging (reduces file I/O)
 4. Use Redis for rate limiting in distributed deployments
+5. Monitor OpenRouter usage at https://openrouter.ai/activity to optimize costs
 
 ## Contributing
 
@@ -423,7 +461,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **[Ollama](https://ollama.ai/)** - Local LLM integration
+- **[OpenRouter](https://openrouter.ai/)** - Unified LLM API access
 - **[marked.js](https://marked.js.org/)** - Markdown rendering
 - **[Winston](https://github.com/winstonjs/winston)** - Logging framework
 - **[Express.js](https://expressjs.com/)** - Web framework
