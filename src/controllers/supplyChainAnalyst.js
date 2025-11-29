@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 class SupplyChainAnalyst {
   async processQuery(query) {
@@ -11,7 +11,7 @@ Query: ${query}
 
 In your response, consider factors such as supply chain efficiency, potential bottlenecks, sustainability concerns, and emerging trends in food distribution and consumer behavior.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       console.error('Error in SupplyChainAnalyst:', error);

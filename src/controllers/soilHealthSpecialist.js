@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 const { logger } = require('../utils/logger');
 
@@ -11,7 +11,7 @@ class SoilHealthSpecialist {
     
     Provide a detailed, scientific, yet practical response focusing on improving soil biology, structure, and fertility.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       logger.error(`Error in SoilHealthSpecialist: ${error.message}`);

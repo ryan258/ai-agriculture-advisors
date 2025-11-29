@@ -1,6 +1,6 @@
 # AI Agriculture Advisors
 
-A production-ready Node.js application that leverages local Large Language Models (LLMs) to provide expert agricultural advice. The system simulates a team of 10 specialized AI-driven agricultural experts, each with domain-specific knowledge and expertise.
+A Node.js application that leverages OpenRouter-hosted Large Language Models (LLMs) to provide expert agricultural advice. The system simulates a team of 10 specialized AI-driven agricultural experts, each with domain-specific knowledge and expertise.
 
 ## Features
 
@@ -45,9 +45,8 @@ A production-ready Node.js application that leverages local Large Language Model
 
 ## Prerequisites
 
-- **Node.js** (v18 or later required for native fetch)
+- **Node.js** v18 or later (uses the native `fetch` API)
 - **npm** (comes with Node.js)
-
 - **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)
 
 ## Installation
@@ -80,10 +79,8 @@ Create a `.env` file in the root directory:
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/ai-agriculture-advisors
 NODE_ENV=development
 
-# OpenRouter Configuration
 OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
 OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
 OPENROUTER_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
@@ -197,47 +194,23 @@ ai-agriculture-advisors/
 ├── src/
 │   ├── server.js                          # Express server entry point
 │   ├── config/
-│   │   ├── database.js                    # MongoDB connection
-│   │   └── experts.js                     # Expert registry (centralized)
+│   │   ├── experts.js                     # Expert registry (centralized)
+│   │   └── llm.js                         # LLM configuration (OpenRouter only)
 │   ├── controllers/                       # Expert role implementations
-│   │   ├── agricultureExpert.js
-│   │   ├── climateAnalyst.js
-│   │   ├── commoditiesSpecialist.js
-│   │   ├── agritechResearcher.js
-│   │   ├── supplyChainAnalyst.js
-│   │   ├── soilHealthSpecialist.js
-│   │   ├── pestDiseaseExpert.js
-│   │   ├── irrigationSpecialist.js
-│   │   ├── organicFarmingConsultant.js
-│   │   └── agriculturalEconomicsAdvisor.js
-│   ├── middleware/
-│   │   ├── validateRequest.js             # Input validation
-│   │   └── errorHandler.js                # Centralized error handling
-│   ├── models/                            # MongoDB schemas (future use)
-│   │   ├── climateData.js
-│   │   ├── cropData.js
-│   │   ├── marketData.js
-│   │   ├── agriTechData.js
-│   │   └── supplyChainData.js
-│   ├── routes/
-│   │   ├── api.js                         # Multi-expert query endpoint
-│   │   └── roundtable.js                  # Roundtable discussion endpoint
-│   ├── services/
-│   │   └── llamaService.js                # Ollama API wrapper (DI-ready)
-│   └── utils/
-│       └── logger.js                      # Winston logger configuration
-├── public/
-│   └── index.html                         # Single-page web interface
-├── data/                                  # Static data files (future use)
-│   ├── cropData.json
-│   ├── climateData.json
-│   └── marketData.json
+│   ├── middleware/                        # validateRequest, errorHandler
+│   ├── routes/                            # api.js (query), roundtable.js
+│   ├── services/                          # Providers only
+│   │   └── providers/
+│   │       ├── baseProvider.js
+│   │       ├── openRouterClient.js        # Shared OpenRouter instance
+│   │       └── openRouterProvider.js
+│   └── utils/                             # logger.js and helpers
+├── public/                                # Frontend (index.html, script.js, styles.css)
+├── data/                                  # Placeholder JSON files (empty)
+├── tests/                                 # Jest unit/integration tests
 ├── .env                                   # Environment configuration (gitignored)
 ├── .env.example                           # Environment template
-├── .gitignore
 ├── package.json
-├── package-lock.json
-├── README.md
 └── ROADMAP.md                             # Development roadmap
 ```
 
@@ -248,7 +221,6 @@ ai-agriculture-advisors/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Server port | `3000` |
-| `LLM_PROVIDER` | LLM provider to use | `openrouter` |
 | `OPENROUTER_API_KEY` | Your OpenRouter API key | *Required* |
 | `OPENROUTER_API_URL` | OpenRouter API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
 | `OPENROUTER_MODEL_NAME` | LLM model to use | `meta-llama/llama-3.1-8b-instruct:free` |
@@ -258,15 +230,10 @@ ai-agriculture-advisors/
 
 OpenRouter provides access to 100+ models. Popular options:
 
-**Free Models:**
-- `meta-llama/llama-3.1-8b-instruct:free` (Default)
+- `meta-llama/llama-3.1-8b-instruct:free` (default, free)
 - `google/gemini-flash-1.5`
-
-**Paid Models (require credits):**
-- `anthropic/claude-3-sonnet` - Best for complex reasoning
-- `openai/gpt-4-turbo` - General purpose, high quality
-- `meta-llama/llama-3.1-70b-instruct` - Large, powerful
-- `google/gemini-pro-1.5` - Fast and capable
+- `openai/gpt-4o-mini`
+- `meta-llama/llama-3.1-70b-instruct`
 
 See the full list at [https://openrouter.ai/models](https://openrouter.ai/models)
 
@@ -291,44 +258,40 @@ Log format:
 npm test
 ```
 
-*Note: Test suite coming soon - see ROADMAP.md*
-
 ### Linting
 
 ```bash
 npm run lint
 ```
 
-*Note: ESLint configuration coming soon*
-
 ### Adding New Experts
 
 1. Create controller in `src/controllers/`:
 
 ```javascript
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 const { logger } = require('../utils/logger');
 
 class NewExpert {
-    async processQuery(query) {
-        try {
-            const prompt = `You are a [Role]. Your expertise covers...
+  async processQuery(query) {
+    try {
+      const prompt = `You are a [Role]. Your expertise covers...
 
-    User Query: ${query}
+User Query: ${query}
 
-    Provide detailed, scientific advice...`;
+Provide detailed, scientific advice...`;
 
-            const response = await llamaService.generateResponse(prompt);
-            return this.processResponse(response);
-        } catch (error) {
-            logger.error(`Error in NewExpert: ${error.message}`);
-            throw new Error('Failed to process query in NewExpert');
-        }
+      const response = await openRouterClient.generateResponse(prompt);
+      return this.processResponse(response);
+    } catch (error) {
+      logger.error(`Error in NewExpert: ${error.message}`);
+      throw new Error('Failed to process query in NewExpert');
     }
+  }
 
-    processResponse(response) {
-        return response.trim();
-    }
+  processResponse(response) {
+    return response.trim();
+  }
 }
 
 module.exports = new NewExpert();
@@ -407,20 +370,7 @@ For production deployment, additionally consider:
 
 ## Performance
 
-### Benchmarks
-
-- **API Latency:** < 200ms (excluding LLM generation)
-- **LLM Response Time:** 2-10 seconds (model-dependent)
-- **Concurrent Users:** Tested up to 50 simultaneous requests
-- **Memory Usage:** ~150MB baseline
-
-### Optimization Tips
-
-1. Use faster LLM models for development (e.g., `google/gemini-flash-1.5`)
-2. Implement response caching for common queries to reduce API costs
-3. Enable MongoDB for persistent logging (reduces file I/O)
-4. Use Redis for rate limiting in distributed deployments
-5. Monitor OpenRouter usage at https://openrouter.ai/activity to optimize costs
+No formal performance benchmarks are published yet. Perceived latency is dominated by the selected OpenRouter model; lighter models (e.g., `...-flash` / smaller Llama variants) respond faster.
 
 ## Contributing
 

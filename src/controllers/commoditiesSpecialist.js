@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 class CommoditiesSpecialist {
   async processQuery(query) {
@@ -11,7 +11,7 @@ Query: ${query}
 
 In your response, consider factors such as current market trends, supply and demand dynamics, price forecasts, and any relevant geopolitical or environmental factors that might impact agricultural commodities.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       console.error('Error in CommoditiesSpecialist:', error);

@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 const { logger } = require('../utils/logger');
 
@@ -11,7 +11,7 @@ class AgriculturalEconomicsAdvisor {
     
     Provide financial analysis, risk assessment, or economic advice to help the user make profitable and sustainable business decisions.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       logger.error(`Error in AgriculturalEconomicsAdvisor: ${error.message}`);

@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 const { logger } = require('../utils/logger');
 
@@ -11,7 +11,7 @@ class OrganicFarmingConsultant {
     
     Provide guidance compliant with organic standards (like USDA Organic or EU Organic), focusing on ecological balance and biodiversity.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       logger.error(`Error in OrganicFarmingConsultant: ${error.message}`);

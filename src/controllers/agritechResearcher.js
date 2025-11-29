@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 class AgritechResearcher {
   async processQuery(query) {
@@ -11,7 +11,7 @@ Query: ${query}
 
 In your response, consider recent technological advancements, their potential impact on agricultural productivity and sustainability, and any challenges or opportunities in their implementation.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       console.error('Error in AgritechResearcher:', error);

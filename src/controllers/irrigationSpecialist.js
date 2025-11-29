@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 const { logger } = require('../utils/logger');
 
@@ -11,7 +11,7 @@ class IrrigationSpecialist {
     
     Provide advice on efficient water use, system design, or troubleshooting, keeping sustainability and cost-effectiveness in mind.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       logger.error(`Error in IrrigationSpecialist: ${error.message}`);

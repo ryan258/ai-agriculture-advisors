@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 class AgricultureExpert {
   async processQuery(query) {
@@ -11,7 +11,7 @@ Query: ${query}
 
 In your response, consider relevant factors such as soil conditions, climate impact, crop varieties, and modern agricultural practices. If applicable, mention potential challenges and solutions.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       console.error('Error in AgricultureExpert:', error);

@@ -6,7 +6,7 @@ This guide walks you through the fastest path to get the AI Agriculture Advisors
 
 Before starting, ensure you have:
 
-- [ ] **Node.js** (v14 or later) installed - `node --version`
+- [ ] **Node.js** (v18 or later) installed - `node --version`
 - [ ] **npm** installed (comes with Node.js) - `npm --version`
 - [ ] **OpenRouter API Key** - [Get one free here](https://openrouter.ai/keys)
 
@@ -42,16 +42,15 @@ Edit the `.env` file and add your OpenRouter API key:
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/ai-agriculture-advisors
 NODE_ENV=development
 
-# Add your actual API key here
+# OpenRouter Configuration
 OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
 OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
 OPENROUTER_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
 ```
 
-**Note:** MongoDB is optional for basic functionality. If you don't have MongoDB installed, the app will still work (you'll see a connection warning, but you can ignore it).
+**Important:** Replace `sk-or-v1-your-actual-key-here` with your actual API key!
 
 ## Step 4: Start the Application
 
@@ -68,7 +67,6 @@ npm start
 **Expected output:**
 ```
 Server running on port 3000
-MongoDB connection error (this is OK if you don't have MongoDB)
 ```
 
 **Important:** Make sure you see no errors about missing `OPENROUTER_API_KEY`. If you do, double-check your `.env` file.
@@ -78,13 +76,13 @@ MongoDB connection error (this is OK if you don't have MongoDB)
 ### Option A: Use the Web Interface
 
 1. Open your browser and navigate to: **http://localhost:3000**
-2. You should see the AI Agriculture Advisors interface
+2. You should see the AI Agriculture Advisors interface with dark/light mode toggle
 3. Select one or more experts from the sidebar (e.g., "Agricultural Science Expert")
 4. Enter a test query: `What are the benefits of crop rotation?`
 5. Click **"Submit Query"**
 6. Wait 5-10 seconds for the AI response
 
-**Success indicator:** You should see formatted responses from the selected experts.
+**Success indicator:** You should see formatted responses from the selected experts with markdown rendering.
 
 ### Option B: Test the API with curl
 
@@ -156,7 +154,7 @@ This is a more advanced feature where multiple experts collaborate:
    ```
 3. Restart the server after updating `.env`
 
-### Issue: "Failed to generate response from LLM via OpenRouter"
+### Issue: "Failed to generate response from OpenRouter"
 
 **Common causes:**
 1. **Invalid API key** - Double-check your key at https://openrouter.ai/keys
@@ -184,16 +182,8 @@ Then restart the server and access http://localhost:3001
 # Faster free option:
 OPENROUTER_MODEL_NAME=google/gemini-flash-1.5
 
-# Or a smaller Llama model:
+# Or stick with Llama:
 OPENROUTER_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
-```
-
-### Issue: MongoDB connection warnings
-
-**Fix:** This is safe to ignore if you're not using database features. To suppress warnings, you can comment out the MongoDB connection in `src/server.js`:
-```javascript
-// Comment this line:
-// connectDB();
 ```
 
 ### Issue: Rate limiting or quota exceeded
@@ -213,9 +203,11 @@ Once everything is working:
 1. **Explore all 10 experts** - Each has unique specialized knowledge
 2. **Try complex queries** - Test multi-expert roundtables
 3. **Experiment with models** - Try different OpenRouter models (Claude, GPT-4, Gemini, etc.)
-4. **Read the full docs** - Check [README.md](README.md) for API details
-5. **Check the roadmap** - See planned features in [ROADMAP.md](ROADMAP.md)
-6. **Monitor costs** - Keep an eye on your OpenRouter usage and credits
+4. **Use the export feature** - Download responses as markdown files
+5. **Check query history** - Your last 10 queries are saved in localStorage
+6. **Toggle dark mode** - Try the dark/light theme switcher
+7. **Read the full docs** - Check [README.md](README.md) for API details
+8. **Monitor costs** - Keep an eye on your OpenRouter usage and credits
 
 ## Success Indicators Summary
 
@@ -227,15 +219,37 @@ You're on the happy path when:
 - ✅ Sample queries return AI-generated responses
 - ✅ Multiple experts can be queried simultaneously
 - ✅ Roundtable discussions complete successfully
+- ✅ Dark/light mode toggle works
+- ✅ Query history persists across page reloads
+- ✅ Export to markdown works
 
 ## Pro Tips for the Happy Path
 
 1. **Start with free models** - Use `meta-llama/llama-3.1-8b-instruct:free` to avoid charges
 2. **Monitor your usage** - Check https://openrouter.ai/activity to track API calls and costs
-3. **MongoDB is optional** - Skip it if you're just testing the AI features
-4. **Test with one expert first** - Verify basic functionality before trying roundtables
-5. **Check the logs** - Watch `combined.log` for debugging (created automatically)
-6. **Try different models** - OpenRouter supports 100+ models - experiment to find the best fit
+3. **Test with one expert first** - Verify basic functionality before trying roundtables
+4. **Check the logs** - Watch `combined.log` for debugging (created automatically)
+5. **Try different models** - OpenRouter supports 100+ models - experiment to find the best fit
+6. **Use query suggestions** - Click the example queries for quick testing
+
+## Current Features
+
+**Working:**
+- ✅ 10 specialized agricultural experts
+- ✅ Multi-expert parallel queries
+- ✅ Roundtable collaborative discussions
+- ✅ Markdown rendering with syntax highlighting
+- ✅ Dark/light mode theme
+- ✅ Query history (last 10 queries in localStorage)
+- ✅ Export responses as markdown
+- ✅ Rate limiting (100 requests per 15 minutes)
+- ✅ Winston logging (combined.log, error.log)
+- ✅ LLM provider abstraction (OpenRouter, Anthropic placeholder)
+
+**Not needed (simplified):**
+- ❌ MongoDB (using localStorage instead)
+- ❌ User authentication (single-user app)
+- ❌ Ollama (switched to cloud-based OpenRouter)
 
 ---
 

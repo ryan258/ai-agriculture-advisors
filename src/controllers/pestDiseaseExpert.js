@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 const { logger } = require('../utils/logger');
 
@@ -11,7 +11,7 @@ class PestDiseaseExpert {
     
     Provide a diagnosis if possible and recommend sustainable management strategies, prioritizing non-chemical interventions where appropriate.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       logger.error(`Error in PestDiseaseExpert: ${error.message}`);

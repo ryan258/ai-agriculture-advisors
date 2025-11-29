@@ -1,4 +1,4 @@
-const llamaService = require('../services/llamaService');
+const openRouterClient = require('../services/providers/openRouterClient');
 
 class ClimateAnalyst {
   async processQuery(query) {
@@ -11,7 +11,7 @@ Query: ${query}
 
 In your response, consider factors such as temperature changes, precipitation patterns, extreme weather events, and their impacts on agricultural productivity. If relevant, discuss potential adaptation strategies for farmers.`;
 
-      const response = await llamaService.generateResponse(prompt);
+      const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
       console.error('Error in ClimateAnalyst:', error);
