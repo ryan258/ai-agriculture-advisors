@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +14,9 @@
             --surface: #fff;
             --text: #232946;
             --muted: #bfc9d1;
-            --shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+            --shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
         }
+
         body {
             font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
             background: var(--background);
@@ -22,6 +24,7 @@
             margin: 0;
             padding: 0;
         }
+
         .container {
             display: flex;
             flex-direction: row;
@@ -30,16 +33,18 @@
             min-height: 100vh;
             gap: 0;
         }
+
         .sidebar {
             flex: 1 1 320px;
             max-width: 340px;
             background: var(--surface);
             padding: 40px 24px 24px 24px;
-            box-shadow: 2px 0 8px 0 rgba(0,0,0,0.03);
+            box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.03);
             display: flex;
             flex-direction: column;
             min-width: 260px;
         }
+
         .main {
             flex: 2 1 0%;
             padding: 48px 40px 40px 40px;
@@ -49,12 +54,14 @@
             flex-direction: column;
             gap: 24px;
         }
+
         h1 {
             color: var(--primary-dark);
             letter-spacing: 1px;
             margin-bottom: 32px;
             font-size: 2.3rem;
         }
+
         form {
             background: none;
             padding: 0;
@@ -62,16 +69,19 @@
             box-shadow: none;
             margin-bottom: 0;
         }
+
         label {
             font-weight: 600;
             margin-bottom: 8px;
             display: block;
         }
+
         input[type="checkbox"] {
             accent-color: var(--primary);
             margin-right: 8px;
             transform: scale(1.15);
         }
+
         textarea {
             width: 100%;
             padding: 14px;
@@ -83,6 +93,7 @@
             resize: vertical;
             background: var(--background);
         }
+
         button {
             background: var(--primary);
             color: #fff;
@@ -94,21 +105,28 @@
             margin-right: 12px;
             margin-top: 6px;
             cursor: pointer;
-            box-shadow: 0 2px 8px 0 rgba(0,150,136,0.08);
+            box-shadow: 0 2px 8px 0 rgba(0, 150, 136, 0.08);
             transition: background 0.2s, box-shadow 0.2s;
         }
+
         button[type="button"] {
             background: var(--accent);
             color: var(--primary-dark);
         }
-        button:hover, button:focus {
+
+        button:hover,
+        button:focus {
             background: var(--primary-dark);
-            box-shadow: 0 4px 16px 0 rgba(0,150,136,0.15);
+            box-shadow: 0 4px 16px 0 rgba(0, 150, 136, 0.15);
         }
-        button[type="button"]:hover, button[type="button"]:focus {
+
+        button[type="button"]:hover,
+        button[type="button"]:focus {
             background: #ffe6a1;
         }
-        #response, #roundtable {
+
+        #response,
+        #roundtable {
             background: var(--surface);
             padding: 32px 28px;
             border-radius: 18px;
@@ -116,32 +134,48 @@
             margin-bottom: 18px;
             font-size: 1.07rem;
         }
-        #response h1, #response h2, #response h3,
-        #roundtable h1, #roundtable h2, #roundtable h3 {
+
+        #response h1,
+        #response h2,
+        #response h3,
+        #roundtable h1,
+        #roundtable h2,
+        #roundtable h3 {
             margin-top: 0;
         }
-        #response ul, #response ol, #roundtable ul, #roundtable ol {
+
+        #response ul,
+        #response ol,
+        #roundtable ul,
+        #roundtable ol {
             padding-left: 20px;
         }
-        #response pre, #roundtable pre {
+
+        #response pre,
+        #roundtable pre {
             background: #eaf6f6;
             padding: 10px;
             border-radius: 8px;
             overflow-x: auto;
         }
+
         @media (max-width: 900px) {
             .container {
                 flex-direction: column;
             }
-            .sidebar, .main {
+
+            .sidebar,
+            .main {
                 max-width: 100%;
                 padding: 24px 8px;
             }
         }
+
         @media (max-width: 600px) {
             .main {
                 padding: 8px 2px;
             }
+
             h1 {
                 font-size: 1.3rem;
             }
@@ -149,6 +183,7 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <div class="sidebar">
@@ -159,7 +194,16 @@
                 <input type="checkbox" name="expertRole" value="climate"> Climate Change Impact Analyst<br>
                 <input type="checkbox" name="expertRole" value="commodities"> Commodities Trading Specialist<br>
                 <input type="checkbox" name="expertRole" value="agritech"> AgriTech Innovation Researcher<br>
-                <input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain Analyst<br>
+                <label><input type="checkbox" name="expertRole" value="supplychain"> Food Supply Chain
+                    Analyst</label><br>
+                <label><input type="checkbox" name="expertRole" value="soil"> Soil Health Specialist</label><br>
+                <label><input type="checkbox" name="expertRole" value="pest"> Pest & Disease Management
+                    Expert</label><br>
+                <label><input type="checkbox" name="expertRole" value="irrigation"> Irrigation & Water Management
+                    Specialist</label><br>
+                <label><input type="checkbox" name="expertRole" value="organic"> Organic Farming Consultant</label><br>
+                <label><input type="checkbox" name="expertRole" value="economics"> Agricultural Economics
+                    Advisor</label><br>
                 <textarea id="query" rows="5" placeholder="Enter your query here..."></textarea>
                 <button type="submit">Submit Query</button>
                 <button type="button" onclick="submitRoundTable()">Round Table Discussion</button>
@@ -274,9 +318,15 @@
                 case 'commodities': return 'Commodities Trading Specialist';
                 case 'agritech': return 'AgriTech Innovation Researcher';
                 case 'supplychain': return 'Food Supply Chain Analyst';
+                case 'soil': return 'Soil Health Specialist';
+                case 'pest': return 'Pest & Disease Management Expert';
+                case 'irrigation': return 'Irrigation & Water Management Specialist';
+                case 'organic': return 'Organic Farming Consultant';
+                case 'economics': return 'Agricultural Economics Advisor';
                 default: return role;
             }
         }
     </script>
 </body>
+
 </html>

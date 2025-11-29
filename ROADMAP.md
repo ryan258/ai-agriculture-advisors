@@ -73,12 +73,12 @@ A comprehensive enhancement plan to make this project more robust, scalable, and
 ## 📋 Core Functionality Enhancements
 
 ### Expert System Expansion
-- [ ] **Add More Expert Roles**:
-  - Soil Health Specialist
-  - Pest & Disease Management Expert
-  - Irrigation & Water Management Specialist
-  - Organic Farming Consultant
-  - Agricultural Economics Advisor
+- [x] **Add More Expert Roles**:
+  - [x] Soil Health Specialist
+  - [x] Pest & Disease Management Expert
+  - [x] Irrigation & Water Management Specialist
+  - [x] Organic Farming Consultant
+  - [x] Agricultural Economics Advisor
 - [ ] **Interactive Q&A Sessions**: Enable multi-turn conversations with context retention
 - [ ] **Expert Confidence Scoring**: Add confidence levels to expert responses
 - [ ] **Expertise Routing**: Automatically route questions to most relevant experts based on query analysis
