@@ -1,4 +1,5 @@
 const openRouterClient = require('../services/providers/openRouterClient');
+const { logger } = require('../utils/logger');
 
 class SupplyChainAnalyst {
   async processQuery(query) {
@@ -14,7 +15,7 @@ In your response, consider factors such as supply chain efficiency, potential bo
       const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
-      console.error('Error in SupplyChainAnalyst:', error);
+      logger.error(`Error in SupplyChainAnalyst: ${error.message}`);
       throw new Error('Failed to process query in SupplyChainAnalyst');
     }
   }

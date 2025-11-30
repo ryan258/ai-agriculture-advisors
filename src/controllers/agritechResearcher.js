@@ -1,4 +1,5 @@
 const openRouterClient = require('../services/providers/openRouterClient');
+const { logger } = require('../utils/logger');
 
 class AgritechResearcher {
   async processQuery(query) {
@@ -14,7 +15,7 @@ In your response, consider recent technological advancements, their potential im
       const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
-      console.error('Error in AgritechResearcher:', error);
+      logger.error(`Error in AgritechResearcher: ${error.message}`);
       throw new Error('Failed to process query in AgritechResearcher');
     }
   }

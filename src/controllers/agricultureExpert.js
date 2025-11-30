@@ -1,4 +1,5 @@
 const openRouterClient = require('../services/providers/openRouterClient');
+const { logger } = require('../utils/logger');
 
 class AgricultureExpert {
   async processQuery(query) {
@@ -14,7 +15,7 @@ In your response, consider relevant factors such as soil conditions, climate imp
       const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
-      console.error('Error in AgricultureExpert:', error);
+      logger.error(`Error in AgricultureExpert: ${error.message}`);
       throw new Error('Failed to process query in AgricultureExpert');
     }
   }

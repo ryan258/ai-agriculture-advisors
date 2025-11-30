@@ -13,7 +13,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      "script-src-attr": ["'unsafe-inline'"],
+    },
+  },
+}));
 app.use(cors());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

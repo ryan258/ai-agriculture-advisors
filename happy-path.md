@@ -117,6 +117,30 @@ This is a more advanced feature where multiple experts collaborate:
 
 **Success indicator:** You should see a transcript of the discussion between experts, followed by a synthesized final answer.
 
+## Ready-to-use Test Queries
+
+Use these to quickly verify each flow:
+
+- **Single expert (fastest)**
+  - Expert: Soil Health Specialist  
+  - Query: `What's the optimal pH range and amendment plan for clay soils growing tomatoes?`
+
+- **Multi-expert parallel responses**
+  - Experts: Agricultural Science + Climate Change Impact Analyst + Irrigation Specialist  
+  - Query: `Design a drought-resilient planting plan for a 20-acre corn field in Kansas for the next 5 years.`
+
+- **Market/economics angle**
+  - Experts: Commodities Trading Specialist + Agricultural Economics Advisor  
+  - Query: `Should I forward-contract 50% of my soybean harvest this season given current Midwest basis levels?`
+
+- **Roundtable (collaborative)**
+  - Experts: Agricultural Science + Soil Health + Organic Farming Consultant + Pest & Disease  
+  - Query: `Create an organic, low-input rotation to control soybean cyst nematode and improve soil organic matter over three years.`
+
+- **AgriTech-focused**
+  - Experts: AgriTech Innovation Researcher + Supply Chain Analyst  
+  - Query: `How can low-cost IoT sensors and simple dashboards cut post-harvest losses for smallholder maize farmers?`
+
 ## Common "Happy Path" Workflows
 
 ### Workflow 1: Quick Expert Consultation

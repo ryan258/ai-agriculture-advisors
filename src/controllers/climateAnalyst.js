@@ -1,4 +1,5 @@
 const openRouterClient = require('../services/providers/openRouterClient');
+const { logger } = require('../utils/logger');
 
 class ClimateAnalyst {
   async processQuery(query) {
@@ -14,7 +15,7 @@ In your response, consider factors such as temperature changes, precipitation pa
       const response = await openRouterClient.generateResponse(prompt);
       return this.processResponse(response);
     } catch (error) {
-      console.error('Error in ClimateAnalyst:', error);
+      logger.error(`Error in ClimateAnalyst: ${error.message}`);
       throw new Error('Failed to process query in ClimateAnalyst');
     }
   }
