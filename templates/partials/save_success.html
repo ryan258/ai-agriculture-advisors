@@ -1,0 +1,17 @@
+<div class="responses-header">
+    <h2>{% if result_type == 'roundtable' %}Roundtable Discussion{% else %}Expert Responses{% endif %}</h2>
+    <div class="query-display">
+        <strong>Query:</strong> {{ query }}
+    </div>
+    {% if result_type == 'roundtable' %}
+    <div class="roundtable-meta">
+        <span class="meta-item"><strong>Rounds:</strong> {{ rounds }}</span>
+        <span class="meta-item"><strong>Participants:</strong> {{ num_experts }}</span>
+    </div>
+    {% endif %}
+    <div class="response-actions">
+        <span class="save-status success">Saved</span>
+        <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
+    </div>
+</div>
+<script>htmx.trigger(document.body, 'resultSaved');</script>

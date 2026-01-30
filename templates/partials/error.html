@@ -1,0 +1,7 @@
+<div class="card error-card">
+    <h3 class="error-title">Error</h3>
+    <p>{{ message | e }}</p>
+    {% if details %}
+    <pre class="error-details">{{ details | e }}</pre>
+    {% endif %}
+</div>

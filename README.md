@@ -1,6 +1,6 @@
 # AI Agriculture Advisors
 
-A Node.js application that leverages OpenRouter-hosted Large Language Models (LLMs) to provide expert agricultural advice. The system simulates a team of 10 specialized AI-driven agricultural experts, each with domain-specific knowledge and expertise.
+A Python/FastAPI application that leverages OpenRouter-hosted Large Language Models (LLMs) to provide expert agricultural advice. The system simulates a team of 10 specialized AI-driven agricultural experts, each with domain-specific knowledge and expertise.
 
 ## Features
 
@@ -22,31 +22,25 @@ A Node.js application that leverages OpenRouter-hosted Large Language Models (LL
 
 ### Core Functionality
 
-- **Multi-Expert Consultation** - Query multiple experts simultaneously for comprehensive insights
+- **Multi-Expert Consultation** - Query multiple experts simultaneously (parallel execution)
 - **Roundtable Discussions** - Collaborative multi-round expert debates for complex topics
-- **Markdown Rendering** - Beautifully formatted responses with syntax highlighting
-- **Request Validation** - Input sanitization and type checking on all endpoints
-- **Centralized Error Handling** - Consistent, environment-aware error responses
-
-### Security & Performance
-
-- **Helmet.js Security Headers** - Protection against common web vulnerabilities
-- **CORS Configuration** - Cross-origin resource sharing support
-- **Rate Limiting** - 100 requests per 15 minutes per IP
-- **Request Size Limits** - 1MB payload cap to prevent abuse
-- **Winston Logging** - Professional structured logging with file transports
+- **Persistent History** - Save results to ChromaDB, survives server restarts
+- **Markdown Export** - Download any saved result as a .md file
+- **HTMX-Powered UI** - Fast, modern interface without JavaScript frameworks
+- **Dark Theme** - Candlelight dark theme for comfortable viewing
 
 ### Architecture
 
-- **Dependency Injection** - Testable, decoupled services
-- **Centralized Configuration** - Single source of truth for expert registry
-- **Middleware Pattern** - Reusable validation and error handling
-- **Environment-Based Config** - Flexible deployment across environments
+- **FastAPI** - Modern async Python web framework
+- **Jinja2 + HTMX** - Server-rendered templates with dynamic updates
+- **ChromaDB** - Vector database for persistent storage
+- **httpx** - Async HTTP client for LLM API calls
+- **Rate Limiting** - Built-in protection with slowapi
 
 ## Prerequisites
 
-- **Node.js** v18 or later (uses the native `fetch` API)
-- **npm** (comes with Node.js)
+- **Python 3.12** or later
+- **uv** - Fast Python package manager ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)
 
 ## Installation
@@ -61,116 +55,50 @@ cd ai-agriculture-advisors
 ### 2. Install Dependencies
 
 ```bash
-npm install
+uv sync
 ```
 
-### 3. Get OpenRouter API Key
+### 3. Configure Environment
 
-1. Visit [https://openrouter.ai/keys](https://openrouter.ai/keys)
-2. Sign up or log in (GitHub OAuth supported)
-3. Create a new API key
-4. Copy your key (starts with `sk-or-v1-...`)
+```bash
+cp .env.example .env
+```
 
-**Free tier includes $1 of credits and access to free models.**
-
-### 4. Configure Environment
-
-Create a `.env` file in the root directory:
+Edit `.env` and add your OpenRouter API key:
 
 ```env
-PORT=3000
-NODE_ENV=development
-
 OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
-OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
-OPENROUTER_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
+OPENROUTER_MODEL=mistralai/mistral-7b-instruct:free
+PORT=8123
+CHROMADB_PATH=.chromadb
+ALLOW_MISSING_API_KEY=false
 ```
 
-See `.env.example` for a complete template with model options.
+### 4. Start the Application
 
-### 5. Start the Application
-
-**Development mode (with auto-reload):**
+**Using the start script:**
 ```bash
-npm run dev
+./start.sh
 ```
 
-**Production mode:**
+**Or directly with uv:**
 ```bash
-npm start
+uv run uvicorn main:app --reload --port 8123
 ```
+
+Navigate to `http://localhost:8123`
 
 ## Usage
 
 ### Web Interface
 
-1. Navigate to `http://localhost:3000`
-2. Select one or more experts from the sidebar
-3. Enter your agricultural query
-4. Choose between:
+1. Select one or more experts from the sidebar
+2. Enter your agricultural query
+3. Choose between:
    - **Submit Query** - Get parallel responses from each selected expert
-   - **Round Table Discussion** - Initiate a collaborative multi-round debate
-
-### API Endpoints
-
-#### Multi-Expert Query
-
-```bash
-POST /api/query
-Content-Type: application/json
-
-{
-  "query": "What are the best practices for soil conservation?",
-  "expertRoles": ["agriculture", "soil", "climate"]
-}
-```
-
-**Response:**
-```json
-{
-  "responses": {
-    "agriculture": {
-      "response": "Detailed agricultural perspective..."
-    },
-    "soil": {
-      "response": "Soil health analysis..."
-    },
-    "climate": {
-      "response": "Climate impact considerations..."
-    }
-  }
-}
-```
-
-#### Roundtable Discussion
-
-```bash
-POST /api/roundtable
-Content-Type: application/json
-
-{
-  "query": "How can we adapt farming to climate change?",
-  "expertRoles": ["climate", "agriculture", "irrigation"],
-  "rounds": 3
-}
-```
-
-**Response:**
-```json
-{
-  "transcript": [
-    {
-      "speaker": "Climate Change Impact Analyst",
-      "text": "Initial analysis..."
-    },
-    {
-      "speaker": "Agricultural Science Expert",
-      "text": "Building on previous point..."
-    }
-  ],
-  "finalAnswer": "Consensus synthesis..."
-}
-```
+   - **Round Table** - Initiate a multi-round discussion (requires 2+ experts)
+4. **Save** results for persistent storage
+5. **Export** saved results as markdown files
 
 ### Expert Role Keys
 
@@ -187,31 +115,95 @@ Content-Type: application/json
 | `organic` | Organic Farming Consultant |
 | `economics` | Agricultural Economics Advisor |
 
+## Documentation
+
+- `happy-path.md` for a quick start walkthrough
+- `API.md` for endpoint details and CSRF requirements
+
 ## Project Structure
 
 ```
 ai-agriculture-advisors/
-├── src/
-│   ├── server.js                          # Express server entry point
-│   ├── config/
-│   │   ├── experts.js                     # Expert registry (centralized)
-│   │   └── llm.js                         # LLM configuration (OpenRouter only)
-│   ├── controllers/                       # Expert role implementations
-│   ├── middleware/                        # validateRequest, errorHandler
-│   ├── routes/                            # api.js (query), roundtable.js
-│   ├── services/                          # Providers only
-│   │   └── providers/
-│   │       ├── baseProvider.js
-│   │       ├── openRouterClient.js        # Shared OpenRouter instance
-│   │       └── openRouterProvider.js
-│   └── utils/                             # logger.js and helpers
-├── public/                                # Frontend (index.html, script.js, styles.css)
-├── data/                                  # Placeholder JSON files (empty)
-├── tests/                                 # Jest unit/integration tests
-├── .env                                   # Environment configuration (gitignored)
-├── .env.example                           # Environment template
-├── package.json
-└── ROADMAP.md                             # Development roadmap
+├── main.py                     # FastAPI routes (thin layer)
+├── lib/
+│   ├── engine/                 # Core LLM client and config
+│   │   ├── config.py
+│   │   └── llm_client.py
+│   ├── experts/                # 10 domain experts
+│   │   ├── base.py             # Abstract Expert class
+│   │   ├── registry.py         # Expert mapping
+│   │   └── *.py                # Individual experts
+│   ├── services/               # Business logic
+│   │   ├── query_service.py    # Parallel expert queries
+│   │   └── roundtable_service.py
+│   ├── storage/                # Persistence
+│   │   └── history_store.py    # ChromaDB integration
+│   └── utils/
+│       └── logger.py
+├── templates/                  # Jinja2 templates
+│   ├── base.html
+│   ├── index.html
+│   └── partials/               # HTMX partials
+├── static/css/                 # Candlelight dark theme
+├── tests/                      # pytest tests
+├── requirements.txt
+├── pyproject.toml              # black/mypy config
+├── start.sh
+└── .env.example
+```
+
+## Development
+
+### Running Tests
+
+```bash
+uv run pytest
+```
+
+### Code Formatting
+
+```bash
+uv run black .
+```
+
+### Type Checking
+
+```bash
+uv run mypy .
+```
+
+### Adding New Experts
+
+1. Create a new expert in `lib/experts/`:
+
+```python
+from .base import Expert
+
+class NewExpert(Expert):
+    @property
+    def role(self) -> str:
+        return "newrole"
+
+    @property
+    def label(self) -> str:
+        return "New Expert Title"
+
+    @property
+    def system_prompt(self) -> str:
+        return """You are a [Role]. Your expertise covers..."""
+```
+
+2. Register in `lib/experts/registry.py`:
+
+```python
+from .new_expert import NewExpert
+
+_new = NewExpert()
+
+expert_registry = {
+    # ... existing experts
+    "newrole": _new,
+}
 ```
 
 ## Configuration
@@ -220,179 +212,74 @@ ai-agriculture-advisors/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | `3000` |
 | `OPENROUTER_API_KEY` | Your OpenRouter API key | *Required* |
 | `OPENROUTER_API_URL` | OpenRouter API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
-| `OPENROUTER_MODEL_NAME` | LLM model to use | `meta-llama/llama-3.1-8b-instruct:free` |
-| `NODE_ENV` | Environment mode | `development` |
+| `OPENROUTER_MODEL` | LLM model to use | `mistralai/mistral-7b-instruct:free` |
+| `PORT` | Server port | `8123` |
+| `CHROMADB_PATH` | ChromaDB persistence path | `.chromadb` |
+| `ALLOW_MISSING_API_KEY` | Allow startup without API key (tests/dev) | `false` |
 
 ### Supported Models
 
 OpenRouter provides access to 100+ models. Popular options:
 
-- `meta-llama/llama-3.1-8b-instruct:free` (default, free)
+- `mistralai/mistral-7b-instruct:free` (default, free)
+- `meta-llama/llama-3.1-8b-instruct:free` (free)
 - `google/gemini-flash-1.5`
-- `openai/gpt-4o-mini`
-- `meta-llama/llama-3.1-70b-instruct`
+- `anthropic/claude-3-sonnet`
+- `openai/gpt-4-turbo`
 
 See the full list at [https://openrouter.ai/models](https://openrouter.ai/models)
-
-### Logging
-
-Winston logger outputs to:
-- **Console** - Development only (colorized, simple format)
-- **combined.log** - All logs (info level and above)
-- **error.log** - Error logs only
-
-Log format:
-```
-2025-11-29T12:00:00.000Z [info]: Server running on port 3000
-2025-11-29T12:01:23.456Z [error]: Error in SoilHealthSpecialist: Connection timeout
-```
-
-## Development
-
-### Running Tests
-
-```bash
-npm test
-```
-
-### Linting
-
-```bash
-npm run lint
-```
-
-### Adding New Experts
-
-1. Create controller in `src/controllers/`:
-
-```javascript
-const openRouterClient = require('../services/providers/openRouterClient');
-const { logger } = require('../utils/logger');
-
-class NewExpert {
-  async processQuery(query) {
-    try {
-      const prompt = `You are a [Role]. Your expertise covers...
-
-User Query: ${query}
-
-Provide detailed, scientific advice...`;
-
-      const response = await openRouterClient.generateResponse(prompt);
-      return this.processResponse(response);
-    } catch (error) {
-      logger.error(`Error in NewExpert: ${error.message}`);
-      throw new Error('Failed to process query in NewExpert');
-    }
-  }
-
-  processResponse(response) {
-    return response.trim();
-  }
-}
-
-module.exports = new NewExpert();
-```
-
-2. Register in `src/config/experts.js`:
-
-```javascript
-const NewExpert = require('../controllers/newExpert');
-
-const expertMap = {
-    // ... existing experts
-    newkey: { instance: NewExpert, label: 'New Expert Title' }
-};
-```
-
-3. Update `public/index.html`:
-   - Add checkbox for selection
-   - Add case to `getExpertLabel()` function
 
 ## Troubleshooting
 
 ### OpenRouter API Issues
 
-**Error:** `OPENROUTER_API_KEY is not set in environment variables`
+**Error:** `OPENROUTER_API_KEY environment variable is required`
 
-**Solutions:**
 - Create a `.env` file (copy from `.env.example`)
 - Add your API key from https://openrouter.ai/keys
 - Restart the server after updating `.env`
 
-**Error:** `Failed to generate response from LLM via OpenRouter`
+**Error:** `Invalid CSRF token`
 
-**Solutions:**
+- Refresh the page to regenerate the CSRF cookie and retry
+- Ensure your browser accepts cookies for localhost
+
+**Error:** API request failures
+
 - Verify your API key is valid at https://openrouter.ai/keys
 - Check your credit balance at https://openrouter.ai/account
-- Ensure you have network access to openrouter.ai
-- Try switching to a free model: `meta-llama/llama-3.1-8b-instruct:free`
+- Try switching to a free model
 
-### Rate Limit Exceeded
+### Rate Limits
 
-**Error:** `Too Many Requests`
-
-**Solution:**
-
-### Out of Credits
-
-**Error:** HTTP 402 or quota exceeded errors
-
-**Solutions:**
-- Check usage at https://openrouter.ai/activity
-- Add credits to your account
-- Switch to a free model
-
-## API Rate Limits
-
-- **100 requests** per 15-minute window per IP address
-- Configurable in `src/server.js`
+The application implements rate limiting:
+- `/query`: 30 requests per minute
+- `/roundtable`: 10 requests per minute
 
 ## Security
 
-This application implements multiple security best practices:
-
-- **Helmet.js** - Sets secure HTTP headers
-- **CORS** - Configured for cross-origin requests
-- **Rate Limiting** - Prevents API abuse
-- **Input Validation** - Sanitizes all user inputs
-- **Error Handling** - No stack traces exposed in production
-- **Request Size Limits** - Prevents oversized payloads
+- **Rate Limiting** - Prevents API abuse via slowapi
+- **CSRF Protection** - Double-submit cookie token for POST requests
+- **Markdown Sanitization** - DOMPurify sanitizes rendered markdown from LLM output
+- **Form Validation** - Server-side validation for required inputs
 
 For production deployment, additionally consider:
 - HTTPS enforcement
-- CSRF protection
 - Authentication/authorization
-- Secrets management (vault, not .env)
-
-## Performance
-
-No formal performance benchmarks are published yet. Perceived latency is dominated by the selected OpenRouter model; lighter models (e.g., `...-flash` / smaller Llama variants) respond faster.
+- Secrets management
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-See [ROADMAP.md](ROADMAP.md) for planned features and priorities.
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for detailed development plans, including:
-- Additional expert roles
-- Real-time data integration
-- User authentication
-- Testing infrastructure
-- Docker deployment
-- And much more!
+2. Create a feature branch
+3. Run tests: `pytest`
+4. Format code: `black .`
+5. Check types: `mypy .`
+6. Open a Pull Request
 
 ## License
 
@@ -401,18 +288,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - **[OpenRouter](https://openrouter.ai/)** - Unified LLM API access
+- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern Python web framework
+- **[HTMX](https://htmx.org/)** - HTML over the wire
+- **[ChromaDB](https://www.trychroma.com/)** - Vector database
 - **[marked.js](https://marked.js.org/)** - Markdown rendering
-- **[Winston](https://github.com/winstonjs/winston)** - Logging framework
-- **[Express.js](https://expressjs.com/)** - Web framework
-- **[Mongoose](https://mongoosejs.com/)** - MongoDB ODM
-- **[Helmet.js](https://helmetjs.github.io/)** - Security middleware
-
-## Support
-
-For issues, questions, or suggestions:
-- **Issues:** [GitHub Issues](https://github.com/yourusername/ai-agriculture-advisors/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/ai-agriculture-advisors/discussions)
 
 ---
 
-**Built with ❤️ for sustainable agriculture**
+**Built with care for sustainable agriculture**

@@ -1,5 +1,29 @@
+# Environment
 .env
-node_modules
-.vscode
-agri-ai.txt
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.mypy_cache/
+.pytest_cache/
+
+# ChromaDB
+.chromadb/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
 *.log
+
+# Node (legacy)
+node_modules/
+
+# Misc
+agri-ai.txt

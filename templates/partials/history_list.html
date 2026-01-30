@@ -1,0 +1,16 @@
+{% if history %}
+{% for item in history %}
+<div class="history-item"
+     hx-get="/result/{{ item.id }}"
+     hx-target="#response"
+     hx-swap="innerHTML">
+    <div class="history-query">{{ item.query[:50] }}{% if item.query | length > 50 %}...{% endif %}</div>
+    <div class="history-meta">
+        <span class="history-type {{ item.result_type }}">{{ item.result_type }}</span>
+        <span class="history-experts">{{ item.experts | length }} expert{% if item.experts | length != 1 %}s{% endif %}</span>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="history-empty">No saved results yet</div>
+{% endif %}

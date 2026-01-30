@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Agri Advisors</h1>
+        </div>
+
+        <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="section-label">Select Experts:</label>
+
+            {% for expert in experts %}
+            <div class="expert-checkbox">
+                <input type="checkbox" name="roles" value="{{ expert.role }}"
+                       id="expert-{{ expert.role }}"
+                       {% if expert.role == 'agriculture' %}checked{% endif %}>
+                <label for="expert-{{ expert.role }}">{{ expert.label }}</label>
+            </div>
+            {% endfor %}
+
+            <textarea name="query" id="query" rows="5" placeholder="Enter your agricultural query..." required></textarea>
+
+            <div class="suggestions">
+                <span class="chip" data-query="How do I improve soil fertility organically?">Soil fertility</span>
+                <span class="chip" data-query="What are the best practices for drip irrigation?">Drip irrigation</span>
+                <span class="chip" data-query="Explain the impact of climate change on wheat yield.">Climate impact</span>
+                <span class="chip" data-query="Integrated Pest Management for corn.">IPM for corn</span>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit">Submit Query</button>
+                <button type="button" class="secondary"
+                        hx-post="/roundtable"
+                        hx-target="#response"
+                        hx-swap="innerHTML"
+                        hx-indicator="#loading"
+                        hx-include="#advisorForm">
+                    Round Table
+                </button>
+            </div>
+        </form>
+
+        <div class="history-section">
+            <label class="section-label">Saved Results:</label>
+            <div id="historyList" hx-get="/history" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML">
+                <!-- History items loaded via HTMX -->
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div id="loading" class="htmx-indicator">
+            <div class="loader"></div>
+            <p class="loading-text">Consulting experts...</p>
+        </div>
+        <div id="response">
+            <div class="welcome-card card">
+                <h2>Welcome to AI Agriculture Advisors</h2>
+                <p>Select one or more experts from the sidebar and enter your agricultural query.</p>
+                <p><strong>Submit Query</strong> - Get independent responses from each selected expert.</p>
+                <p><strong>Round Table</strong> - Start a multi-round discussion among experts (requires 2+ experts).</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const queryInput = document.getElementById('query');
+        queryInput.value = chip.dataset.query || '';
+        queryInput.focus();
+    });
+});
+</script>
+{% endblock %}

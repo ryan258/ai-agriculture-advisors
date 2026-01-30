@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Agriculture Advisors{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <script>
+        // Configure marked with safe options
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // Sanitize and parse markdown
+        function renderMarkdown(el) {
+            const rawText = el.textContent;
+            const html = marked.parse(rawText);
+            el.innerHTML = DOMPurify.sanitize(html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'hr'],
+                ALLOWED_ATTR: ['href', 'target', 'rel'],
+                ALLOW_DATA_ATTR: false,
+                ADD_ATTR: ['target'],
+                FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input'],
+                FORBID_ATTR: ['onerror', 'onclick', 'onload']
+            });
+            // Make links open in new tab safely
+            el.querySelectorAll('a').forEach(a => {
+                a.setAttribute('target', '_blank');
+                a.setAttribute('rel', 'noopener noreferrer');
+            });
+        }
+
+        // Parse markdown in response cards after HTMX swap
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            const target = event.detail.target;
+            target.querySelectorAll('.markdown-content').forEach(renderMarkdown);
+        });
+
+        // Initial markdown parsing on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.markdown-content').forEach(renderMarkdown);
+        });
+    </script>
+</body>
+</html>

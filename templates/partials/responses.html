@@ -1,0 +1,35 @@
+<div class="responses-container">
+    <div class="responses-header">
+        <h2>Expert Responses</h2>
+        <div class="query-display">
+            <strong>Query:</strong> {{ query }}
+        </div>
+        {% if result_id %}
+        <div class="response-actions">
+            <span class="save-status success">Saved</span>
+            <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
+        </div>
+        {% else %}
+        <button class="btn outline save-btn"
+                hx-post="/save"
+                hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", csrf_token: {{ csrf_token | tojson }}}'
+                hx-swap="outerHTML"
+                hx-target=".responses-header">
+            Save Result
+        </button>
+        {% endif %}
+    </div>
+
+    {% for resp in responses %}
+    <div class="card response-card">
+        <h3>{{ resp.label }}</h3>
+        {% if resp.error %}
+        <div class="error-message">
+            <strong>Error:</strong> {{ resp.error }}
+        </div>
+        {% else %}
+        <div class="markdown-content">{{ resp.response }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

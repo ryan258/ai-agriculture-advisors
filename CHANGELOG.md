@@ -8,17 +8,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-01-30
+
 ### Changed
-- Removed the unimplemented Anthropic provider toggle; OpenRouter is now the only supported provider.
-- Aligned README with the actual codebase (no MongoDB wiring, clarified Node 18+ requirement, updated structure and model options).
-- Trimmed CHANGELOG to match current shipped features and version.
-- Simplified LLM integration by removing `llamaService`/`llmFactory` indirection; controllers call the OpenRouter provider directly.
+- Docs: aligned README, API docs, happy path, and roadmap with the current FastAPI/HTMX implementation and environment variables.
+
+## [2.0.0] - 2026-01-30
+
+### Changed
+- **Complete rewrite from Node.js to Python** following the Anti-Gravity Standard architecture
+- Replaced Express.js with FastAPI for async-first backend
+- Replaced vanilla JavaScript frontend with Jinja2 templates + HTMX
+- Replaced localStorage history with ChromaDB persistent storage
+- New Candlelight dark theme per CLAUDE.md specifications
+- Restructured codebase into `lib/` Arsenal pattern (engine, experts, services, storage, utils)
 
 ### Added
-- Integration tests for `/api/query` and `/api/roundtable` using a stubbed LLM provider.
+- **Persistent history**: Query results saved to ChromaDB, survives server restarts
+- **Markdown export**: Download any saved result as a .md file
+- **Save functionality**: Button to persist query results
+- Async LLM client with httpx
+- Abstract `Expert` base class for all domain experts
+- Parallel query execution with `asyncio.gather()`
+- Rate limiting via slowapi
+- pytest test suite with async support
+- black/mypy configuration in pyproject.toml
+- Type hints throughout the codebase
 
-### Fixed
-- Disabled file-based logging when `NODE_ENV=test` to avoid polluting the repo during test runs.
+### Removed
+- All Node.js dependencies and tooling
+- Express.js, Helmet, Winston, Mongoose
+- Jest test framework
+- Vanilla JavaScript frontend (public/)
+- Empty data/ placeholder files
 
 ---
 

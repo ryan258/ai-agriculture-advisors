@@ -1,0 +1,48 @@
+<div class="roundtable-container">
+    <div class="roundtable-header">
+        <h2>Roundtable Discussion</h2>
+        <div class="query-display">
+            <strong>Query:</strong> {{ query }}
+        </div>
+        <div class="roundtable-meta">
+            <span class="meta-item"><strong>Rounds:</strong> {{ rounds }}</span>
+            <span class="meta-item"><strong>Participants:</strong> {{ roles | length }}</span>
+        </div>
+        {% if result_id %}
+        <div class="response-actions">
+            <span class="save-status success">Saved</span>
+            <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
+        </div>
+        {% else %}
+        <button class="btn outline save-btn"
+                hx-post="/save"
+                hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", roundtable_data: JSON.stringify({{ {"transcript": transcript, "final_answer": final_answer, "rounds": rounds, "roles": roles} | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
+                hx-swap="outerHTML"
+                hx-target=".roundtable-header">
+            Save Result
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Discussion Transcript</h3>
+        <div class="transcript-container">
+            {% for entry in transcript %}
+            <div class="transcript-message">
+                <div class="transcript-speaker">{{ entry.speaker }} <span class="round-badge">Round {{ entry.round }}</span></div>
+                <div class="transcript-text markdown-content">{{ entry.text }}</div>
+            </div>
+            {% if not loop.last %}
+            <hr class="transcript-divider">
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card consensus-card">
+        <h3>Consensus</h3>
+        <div class="consensus-container">
+            <div class="markdown-content">{{ final_answer }}</div>
+        </div>
+    </div>
+</div>
