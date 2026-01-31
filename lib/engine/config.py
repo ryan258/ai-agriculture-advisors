@@ -27,13 +27,8 @@ class Settings:
         """Load settings from environment variables."""
         return cls(
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
-            openrouter_api_url=os.getenv(
-                "OPENROUTER_API_URL",
-                "https://openrouter.ai/api/v1/chat/completions",
-            ),
-            openrouter_model=os.getenv(
-                "OPENROUTER_MODEL", "mistralai/mistral-7b-instruct:free"
-            ),
+            openrouter_api_url=os.getenv("OPENROUTER_API_URL", ""),
+            openrouter_model=os.getenv("OPENROUTER_MODEL", ""),
             port=int(os.getenv("PORT", "8123")),
             allow_missing_api_key=cls._parse_bool(
                 os.getenv("ALLOW_MISSING_API_KEY", "false")

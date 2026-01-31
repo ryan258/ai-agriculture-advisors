@@ -16,4 +16,4 @@ fi
 PORT=${PORT:-8123}
 
 echo "Starting AI Agriculture Advisors on port $PORT..."
-uv run uvicorn main:app --reload --port $PORT
+uv run uvicorn main:app --port $PORT
