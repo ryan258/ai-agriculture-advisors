@@ -23,6 +23,19 @@ class LLMClient:
         self.api_key = api_key or settings.openrouter_api_key
         self.api_url = api_url or settings.openrouter_api_url
         self.model = model or settings.openrouter_model
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return a reusable async HTTP client, creating one if needed."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=120.0)
+        return self._client
+
+    async def close(self) -> None:
+        """Close the underlying HTTP client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
 
     async def generate(self, prompt: str, system_prompt: str) -> str:
         """
@@ -56,30 +69,30 @@ class LLMClient:
             ],
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                response = await client.post(
-                    self.api_url,
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
-                data = response.json()
+        client = self._get_client()
+        try:
+            response = await client.post(
+                self.api_url,
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-                if "choices" not in data or not data["choices"]:
-                    raise ValueError("No choices in API response")
+            if "choices" not in data or not data["choices"]:
+                raise ValueError("No choices in API response")
 
-                return data["choices"][0]["message"]["content"]
+            return data["choices"][0]["message"]["content"]
 
-            except httpx.HTTPStatusError as e:
-                logger.error(f"OpenRouter API error: {e.response.status_code}")
-                raise
-            except httpx.RequestError as e:
-                logger.error(f"Request error: {e}")
-                raise
-            except (KeyError, IndexError) as e:
-                logger.error(f"Unexpected response format: {e}")
-                raise ValueError(f"Unexpected API response format: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"OpenRouter API error: {e.response.status_code}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Request error: {e}")
+            raise
+        except (KeyError, IndexError) as e:
+            logger.error(f"Unexpected response format: {e}")
+            raise ValueError(f"Unexpected API response format: {e}")
 
 
 @lru_cache(maxsize=1)

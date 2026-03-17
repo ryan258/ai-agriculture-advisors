@@ -62,7 +62,7 @@ class Expert(ABC):
 
 Original Query: {query}
 
-{f"Discussion so far:{chr(10)}{transcript}" if transcript else "You are starting the discussion."}
+{("Discussion so far:\n" + transcript) if transcript else "You are starting the discussion."}
 
 As {self.label}, provide your analysis and insights for round {round_num}.
 Build on previous points if applicable, but bring your unique perspective."""

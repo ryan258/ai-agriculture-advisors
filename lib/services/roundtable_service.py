@@ -71,7 +71,7 @@ async def run_roundtable(
                 logger.info(
                     f"Roundtable: {expert.label} contributed in round {round_num}"
                 )
-            except (httpx.HTTPError, ValueError) as e:
+            except Exception as e:
                 logger.error(f"Error in roundtable from {role}: {e}")
                 transcript.append(
                     {
@@ -80,9 +80,6 @@ async def run_roundtable(
                         "round": round_num,
                     }
                 )
-            except Exception as e:
-                logger.exception(f"Unexpected error in roundtable from {role}: {e}")
-                raise
 
     # Generate final consensus
     final_answer = await _generate_consensus(query, transcript)

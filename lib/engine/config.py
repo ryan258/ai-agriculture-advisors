@@ -24,8 +24,8 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        """Load settings from environment variables."""
-        return cls(
+        """Load and validate settings from environment variables."""
+        instance = cls(
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
             openrouter_api_url=os.getenv("OPENROUTER_API_URL", ""),
             openrouter_model=os.getenv("OPENROUTER_MODEL", ""),
@@ -34,6 +34,8 @@ class Settings:
                 os.getenv("ALLOW_MISSING_API_KEY", "false")
             ),
         )
+        instance.validate()
+        return instance
 
     def validate(self) -> None:
         """Validate required settings are present."""

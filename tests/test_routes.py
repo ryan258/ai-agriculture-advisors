@@ -56,7 +56,9 @@ def test_index_shows_all_experts(client: TestClient) -> None:
 def test_query_requires_experts(client: TestClient) -> None:
     """Test that query endpoint requires at least one expert."""
     csrf_token = _get_csrf_token(client)
-    response = client.post("/query", data={"query": "Test query", "csrf_token": csrf_token})
+    response = client.post(
+        "/query", data={"query": "Test query", "csrf_token": csrf_token}
+    )
     assert response.status_code == 200
     assert "select at least one expert" in response.text.lower()
 

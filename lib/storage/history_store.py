@@ -147,7 +147,12 @@ class HistoryStore:
         if not results["ids"]:
             return None
 
-        document = json.loads(results["documents"][0])
+        try:
+            document = json.loads(results["documents"][0])
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.error(f"Corrupt document for result {result_id}: {e}")
+            return None
+
         return {
             "id": result_id,
             **document,

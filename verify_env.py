@@ -1,4 +1,3 @@
-
 import asyncio
 import os
 import sys
@@ -9,10 +8,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from lib.engine.llm_client import LLMClient
 
+
 async def main():
     # Load environment variables
     load_dotenv()
-    
+
     # Check if API key is loaded
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -33,8 +33,8 @@ async def main():
     print("🚀 Sending test request to OpenRouter...")
     try:
         response = await client.generate(
-            prompt="Hello, are you functional? Respond with 'Yes'.", 
-            system_prompt="You are a test script helper."
+            prompt="Hello, are you functional? Respond with 'Yes'.",
+            system_prompt="You are a test script helper.",
         )
         print("\n✅ Success! Response from AI:")
         print("-" * 20)
@@ -42,6 +42,7 @@ async def main():
         print("-" * 20)
     except Exception as e:
         print(f"\n❌ API Request Failed: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

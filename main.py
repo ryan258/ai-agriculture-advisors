@@ -16,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from lib.engine.config import get_settings
+from lib.engine.llm_client import get_llm_client
 from lib.experts import get_all_experts
 from lib.services import query_experts, run_roundtable
 from lib.storage import history_store
@@ -46,11 +47,11 @@ def _validate_csrf(request: Request, csrf_token: str) -> bool:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
     # Startup
-    settings = get_settings()
-    settings.validate()
+    get_settings()
     logger.info("AI Agriculture Advisors started successfully")
     yield
-    # Shutdown (nothing to clean up)
+    # Shutdown
+    await get_llm_client().close()
 
 
 # Initialize FastAPI
