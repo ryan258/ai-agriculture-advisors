@@ -1,0 +1,43 @@
+version = 1
+blog_root = "/Users/ryanjohnson/Projects/cyborg/my-ms-ai-blog"
+base_ref = "HEAD~1"
+head_ref = "HEAD"
+notes_file = ".cyborg-docs-notes.md"
+site_branch_prefix = "codex/docs-sync"
+
+test_commands = [
+  "uv run pytest",
+]
+
+site_check_commands = [
+  "bash \"$DOTFILES_DIR/scripts/cyborg_scoped_site_check.sh\" content/projects/ai-agriculture-advisors.md content/workflows/ai-frameworks/run-ai-agriculture-roundtable.md content/workflows/ai-frameworks/run-quick-expert-query.md",
+  "bash scripts/validate-links.sh",
+]
+
+[[pages]]
+key = "ai-agriculture-advisors-project"
+path = "content/projects/ai-agriculture-advisors.md"
+type = "project"
+mode = "create_if_missing"
+draft = false
+notes = "Mission-level page for the multi-expert agriculture advisor app. Keep the product scope grounded in the repo's real query, roundtable, and history features."
+
+[[pages]]
+key = "ai-agriculture-roundtable-workflow"
+path = "content/workflows/ai-frameworks/run-ai-agriculture-roundtable.md"
+type = "workflow"
+mode = "create_if_missing"
+track = "AI Frameworks"
+jtbd = "Do"
+draft = false
+notes = "Workflow page for selecting experts, running a roundtable, reading the transcript, and saving/exporting the result."
+
+[[pages]]
+key = "ai-agriculture-query-workflow"
+path = "content/workflows/ai-frameworks/run-quick-expert-query.md"
+type = "workflow"
+mode = "create_if_missing"
+track = "AI Frameworks"
+jtbd = "Do"
+draft = false
+notes = "Workflow page for the fast query path that sends one agriculture question to multiple experts in parallel and compares the results. Use the exact slug run-quick-expert-query."

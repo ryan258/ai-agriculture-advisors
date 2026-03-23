@@ -21,6 +21,7 @@ __pycache__/
 
 # Logs
 *.log
+logs/graphs/
 
 # Node (legacy)
 node_modules/
@@ -28,3 +29,4 @@ node_modules/
 # Misc
 agri-ai.txt
 .gitnexus
+logs/graphs/
