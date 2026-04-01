@@ -1,18 +1,29 @@
 """Tests for FastAPI routes."""
 
+import json
 import os
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+import main
+from lib.engine.config import get_settings
+from lib.storage import HistoryStore
 
 
 @pytest.fixture
-def client() -> TestClient:
-    """Create a test client."""
-    os.environ.setdefault("ALLOW_MISSING_API_KEY", "true")
-    return TestClient(app)
+def client(tmp_path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """Create a test client with isolated storage and rate-limit state."""
+    os.environ["ALLOW_MISSING_API_KEY"] = "true"
+    get_settings.cache_clear()
+    main.app.state.limiter._storage.reset()
+    monkeypatch.setattr(
+        main, "history_store", HistoryStore(str(tmp_path / "chromadb-test"))
+    )
+    with TestClient(main.app) as test_client:
+        yield test_client
+    main.app.state.limiter._storage.reset()
 
 
 def _get_csrf_token(client: TestClient) -> str:
@@ -143,6 +154,7 @@ def test_roundtable_success(mock_roundtable: AsyncMock, client: TestClient) -> N
         data={
             "query": "Test query",
             "roles": ["agriculture", "climate"],
+            "rounds": 2,
             "csrf_token": csrf_token,
         },
     )
@@ -150,6 +162,57 @@ def test_roundtable_success(mock_roundtable: AsyncMock, client: TestClient) -> N
     assert response.status_code == 200
     assert "Roundtable Discussion" in response.text
     assert "Consensus" in response.text
+    mock_roundtable.assert_awaited_once_with(
+        "Test query", ["agriculture", "climate"], 2
+    )
+
+
+@pytest.mark.parametrize(
+    ("submitted_rounds", "expected_rounds"),
+    [(0, 1), (1000, 5)],
+)
+@patch("main.run_roundtable")
+def test_roundtable_clamps_rounds_to_supported_bounds(
+    mock_roundtable: AsyncMock,
+    client: TestClient,
+    submitted_rounds: int,
+    expected_rounds: int,
+) -> None:
+    """Test that roundtable rounds are clamped to the supported range."""
+    csrf_token = _get_csrf_token(client)
+    mock_roundtable.return_value = {
+        "query": "Test query",
+        "roles": ["agriculture", "climate"],
+        "rounds": expected_rounds,
+        "transcript": [],
+        "final_answer": "Consensus answer",
+    }
+
+    response = client.post(
+        "/roundtable",
+        data={
+            "query": "Test query",
+            "roles": ["agriculture", "climate"],
+            "rounds": submitted_rounds,
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 200
+    mock_roundtable.assert_awaited_once_with(
+        "Test query", ["agriculture", "climate"], expected_rounds
+    )
+
+
+@patch("main.get_all_experts", side_effect=RuntimeError("boom"))
+def test_index_handles_load_error(mock_get_all_experts, client: TestClient) -> None:
+    """Test that index failures degrade to the error partial."""
+    response = client.get("/")
+
+    assert response.status_code == 500
+    assert "failed to load application" in response.text.lower()
+    assert "boom" in response.text
+    mock_get_all_experts.assert_called_once()
 
 
 def test_history_endpoint(client: TestClient) -> None:
@@ -158,14 +221,180 @@ def test_history_endpoint(client: TestClient) -> None:
     assert response.status_code == 200
 
 
+def test_history_endpoint_handles_store_error(client: TestClient) -> None:
+    """Test history failures degrade to the error partial."""
+    with patch.object(
+        main.history_store, "get_history", side_effect=RuntimeError("boom")
+    ):
+        response = client.get("/history")
+
+    assert response.status_code == 500
+    assert "failed to load history" in response.text.lower()
+    assert "boom" in response.text
+
+
 def test_export_not_found(client: TestClient) -> None:
     """Test export endpoint with invalid ID."""
     response = client.get("/export/invalid-id")
     assert response.status_code == 404
+    assert "Result Not Found" in response.text
 
 
 def test_result_not_found(client: TestClient) -> None:
     """Test result endpoint with invalid ID."""
     response = client.get("/result/invalid-id")
-    assert response.status_code == 200
+    assert response.status_code == 404
     assert "not found" in response.text.lower()
+
+
+def test_result_handles_store_error(client: TestClient) -> None:
+    """Test result lookup failures degrade to the error partial."""
+    with patch.object(
+        main.history_store, "get_result_by_id", side_effect=RuntimeError("boom")
+    ):
+        response = client.get("/result/abc12345")
+
+    assert response.status_code == 500
+    assert "failed to load result" in response.text.lower()
+    assert "boom" in response.text
+
+
+def test_export_handles_store_error(client: TestClient) -> None:
+    """Test export failures degrade to the error partial."""
+    with patch.object(
+        main.history_store, "export_to_markdown", side_effect=RuntimeError("boom")
+    ):
+        response = client.get("/export/abc12345")
+
+    assert response.status_code == 500
+    assert "failed to export result" in response.text.lower()
+    assert "boom" in response.text
+
+
+def test_query_rejects_invalid_csrf(client: TestClient) -> None:
+    """Test that invalid CSRF tokens are rejected."""
+    _get_csrf_token(client)
+    response = client.post(
+        "/query",
+        data={
+            "query": "Test query",
+            "roles": "agriculture",
+            "csrf_token": "invalid-token",
+        },
+    )
+    assert response.status_code == 200
+    assert "invalid csrf token" in response.text.lower()
+
+
+def test_save_query_result_success(client: TestClient) -> None:
+    """Test saving a standard query result."""
+    csrf_token = _get_csrf_token(client)
+    responses = [
+        {
+            "role": "agriculture",
+            "label": "Agricultural Science Expert",
+            "response": "Use a rotation plan.",
+        }
+    ]
+
+    with patch.object(
+        main.history_store, "save_result", return_value="abc12345"
+    ) as mock_save:
+        response = client.post(
+            "/save",
+            data={
+                "query": "How do I protect yield?",
+                "responses": json.dumps(responses),
+                "result_type": "query",
+                "csrf_token": csrf_token,
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Saved" in response.text
+    assert "/export/abc12345" in response.text
+    mock_save.assert_called_once_with(
+        query="How do I protect yield?",
+        experts=["agriculture"],
+        responses=responses,
+        result_type="query",
+    )
+
+
+def test_save_roundtable_result_success(client: TestClient) -> None:
+    """Test saving a roundtable result."""
+    csrf_token = _get_csrf_token(client)
+    roundtable_data = {
+        "roles": ["agriculture", "climate"],
+        "rounds": 2,
+        "transcript": [
+            {
+                "speaker": "Agricultural Science Expert",
+                "text": "Start with soil tests.",
+                "round": 1,
+            }
+        ],
+        "final_answer": "Balance irrigation with soil monitoring.",
+    }
+
+    with patch.object(
+        main.history_store, "save_result", return_value="def67890"
+    ) as mock_save:
+        response = client.post(
+            "/save",
+            data={
+                "query": "How should I manage drought risk?",
+                "result_type": "roundtable",
+                "roundtable_data": json.dumps(roundtable_data),
+                "csrf_token": csrf_token,
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Saved" in response.text
+    assert "Participants" in response.text
+    mock_save.assert_called_once_with(
+        query="How should I manage drought risk?",
+        experts=["agriculture", "climate"],
+        responses=[],
+        result_type="roundtable",
+        roundtable_data=roundtable_data,
+    )
+
+
+@patch("main.query_experts")
+def test_query_rate_limit_enforced(mock_query: AsyncMock, client: TestClient) -> None:
+    """Test that slowapi rejects requests above the configured threshold."""
+    csrf_token = _get_csrf_token(client)
+    mock_query.return_value = {
+        "query": "Test query",
+        "responses": [
+            {
+                "role": "agriculture",
+                "label": "Agricultural Science Expert",
+                "response": "Test response",
+            }
+        ],
+    }
+
+    for _ in range(30):
+        response = client.post(
+            "/query",
+            data={
+                "query": "Test query",
+                "roles": "agriculture",
+                "csrf_token": csrf_token,
+            },
+        )
+        assert response.status_code == 200
+
+    limited_response = client.post(
+        "/query",
+        data={
+            "query": "Test query",
+            "roles": "agriculture",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert limited_response.status_code == 429

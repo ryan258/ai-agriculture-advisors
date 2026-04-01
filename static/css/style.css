@@ -32,6 +32,22 @@ body {
     line-height: 1.6;
 }
 
+.skip-link {
+    position: absolute;
+    left: 16px;
+    top: -48px;
+    background: var(--warning);
+    color: var(--bg);
+    padding: 10px 14px;
+    border-radius: 6px;
+    z-index: 1000;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 16px;
+}
+
 /* Layout */
 .container {
     display: flex;
@@ -97,6 +113,12 @@ form {
     gap: 8px;
 }
 
+.expert-fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
 .expert-checkbox {
     display: flex;
     align-items: center;
@@ -145,6 +167,23 @@ textarea::placeholder {
     color: var(--text-muted);
 }
 
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-3);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.field-hint {
+    margin: -4px 0 8px 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
 /* Buttons */
 .btn-group {
     display: flex;
@@ -174,6 +213,16 @@ button:hover, .btn:hover {
 
 button:active, .btn:active {
     transform: translateY(0);
+}
+
+button:focus-visible,
+.btn:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.history-item:focus-visible {
+    outline: 2px solid var(--warning);
+    outline-offset: 2px;
 }
 
 button.secondary {
@@ -216,6 +265,11 @@ button.outline:hover, .btn.outline:hover {
     border-color: var(--accent);
 }
 
+.chip:focus-visible {
+    background: var(--accent);
+    color: var(--bg);
+}
+
 /* Cards */
 .card {
     background: var(--bg-2);
@@ -233,6 +287,15 @@ button.outline:hover, .btn.outline:hover {
 
 .welcome-card {
     max-width: 600px;
+}
+
+.standalone-main {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.standalone-card {
+    margin-top: 48px;
 }
 
 .welcome-card p {
@@ -355,15 +418,23 @@ button.outline:hover, .btn.outline:hover {
 }
 
 .history-item {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
     padding: 10px 8px;
     cursor: pointer;
     border-radius: 4px;
     margin-bottom: 4px;
     transition: background 0.2s;
+    text-align: left;
+    color: inherit;
 }
 
 .history-item:hover {
     background: var(--bg-3);
+    border-color: var(--border);
+    opacity: 1;
+    transform: none;
 }
 
 .history-query {
@@ -560,6 +631,10 @@ button.outline:hover, .btn.outline:hover {
 
     button, .btn {
         width: 100%;
+    }
+
+    .suggestions .chip {
+        width: auto;
     }
 
     .card {

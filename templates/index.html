@@ -2,67 +2,80 @@
 
 {% block content %}
 <div class="container">
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Advisor controls">
         <div class="sidebar-header">
             <h1>Agri Advisors</h1>
         </div>
 
-        <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading">
+        <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading" aria-label="Advisor query form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <label class="section-label">Select Experts:</label>
+            <fieldset class="expert-fieldset">
+                <legend class="section-label">Select Experts</legend>
 
-            {% for expert in experts %}
-            <div class="expert-checkbox">
-                <input type="checkbox" name="roles" value="{{ expert.role }}"
-                       id="expert-{{ expert.role }}"
-                       {% if expert.role == 'agriculture' %}checked{% endif %}>
-                <label for="expert-{{ expert.role }}">{{ expert.label }}</label>
-            </div>
-            {% endfor %}
+                {% for expert in experts %}
+                <div class="expert-checkbox">
+                    <input type="checkbox" name="roles" value="{{ expert.role }}"
+                           id="expert-{{ expert.role }}"
+                           {% if expert.role == 'agriculture' %}checked{% endif %}>
+                    <label for="expert-{{ expert.role }}">{{ expert.label }}</label>
+                </div>
+                {% endfor %}
+            </fieldset>
 
-            <textarea name="query" id="query" rows="5" placeholder="Enter your agricultural query..." required></textarea>
+            <label class="section-label" for="query">Ask the Advisors</label>
+            <textarea name="query" id="query" rows="5" placeholder="Enter your agricultural query..." aria-describedby="query-hint" required></textarea>
+            <p id="query-hint" class="field-hint">Choose Submit Query for independent answers, or Round Table for a multi-round discussion among the selected experts.</p>
 
-            <div class="suggestions">
-                <span class="chip" data-query="How do I improve soil fertility organically?">Soil fertility</span>
-                <span class="chip" data-query="What are the best practices for drip irrigation?">Drip irrigation</span>
-                <span class="chip" data-query="Explain the impact of climate change on wheat yield.">Climate impact</span>
-                <span class="chip" data-query="Integrated Pest Management for corn.">IPM for corn</span>
+            <label class="section-label" for="rounds">Roundtable Rounds</label>
+            <select name="rounds" id="rounds" aria-describedby="rounds-hint">
+                {% for round_option in round_options %}
+                <option value="{{ round_option }}" {% if round_option == 3 %}selected{% endif %}>{{ round_option }} round{% if round_option != 1 %}s{% endif %}</option>
+                {% endfor %}
+            </select>
+            <p id="rounds-hint" class="field-hint">Used only for Round Table. More rounds create longer transcripts.</p>
+
+            <div class="suggestions" aria-label="Example queries">
+                {% for suggestion in suggested_queries %}
+                <button type="button" class="chip" data-query="{{ suggestion.query }}" aria-label="Use example query: {{ suggestion.query }}">{{ suggestion.label }}</button>
+                {% endfor %}
             </div>
 
             <div class="btn-group">
-                <button type="submit">Submit Query</button>
+                <button type="submit" aria-controls="response">Submit Query</button>
                 <button type="button" class="secondary"
                         hx-post="/roundtable"
                         hx-target="#response"
                         hx-swap="innerHTML"
                         hx-indicator="#loading"
-                        hx-include="#advisorForm">
+                        hx-include="#advisorForm"
+                        aria-controls="response"
+                        aria-describedby="rounds-hint">
                     Round Table
                 </button>
             </div>
         </form>
 
-        <div class="history-section">
-            <label class="section-label">Saved Results:</label>
-            <div id="historyList" hx-get="/history" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML">
+        <div class="history-section" aria-labelledby="saved-results-label">
+            <label class="section-label" id="saved-results-label">Saved Results</label>
+            <div id="historyList" hx-get="/history" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML" aria-live="polite">
                 <!-- History items loaded via HTMX -->
             </div>
         </div>
     </aside>
 
-    <main class="main">
-        <div id="loading" class="htmx-indicator">
+    <main class="main" id="main-content" tabindex="-1">
+        <div id="loading" class="htmx-indicator" role="status" aria-live="polite">
             <div class="loader"></div>
             <p class="loading-text">Consulting experts...</p>
         </div>
-        <div id="response">
+        <section id="response" tabindex="-1" aria-label="Advisor responses" aria-live="polite" aria-busy="false">
             <div class="welcome-card card">
                 <h2>Welcome to AI Agriculture Advisors</h2>
                 <p>Select one or more experts from the sidebar and enter your agricultural query.</p>
                 <p><strong>Submit Query</strong> - Get independent responses from each selected expert.</p>
                 <p><strong>Round Table</strong> - Start a multi-round discussion among experts (requires 2+ experts).</p>
             </div>
-        </div>
+        </section>
     </main>
 </div>
 

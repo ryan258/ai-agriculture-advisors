@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Result Not Found{% endblock %}
+
+{% block content %}
+<main class="main standalone-main" id="main-content" tabindex="-1">
+    <div class="card error-card standalone-card" role="alert" aria-live="assertive">
+        <h1 class="error-title">Result Not Found</h1>
+        <p>{{ message }}</p>
+        {% if result_id %}
+        <p class="error-details">Requested result ID: <code>{{ result_id }}</code></p>
+        {% endif %}
+        <p>The saved result may have been removed, or the link is invalid.</p>
+        <a href="/" class="btn">Return Home</a>
+    </div>
+</main>
+{% endblock %}

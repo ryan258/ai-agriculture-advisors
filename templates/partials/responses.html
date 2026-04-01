@@ -1,7 +1,7 @@
-<div class="responses-container">
+<div class="responses-container" role="region" aria-labelledby="responses-title">
     <div class="responses-header">
-        <h2>Expert Responses</h2>
-        <div class="query-display">
+        <h2 id="responses-title">Expert Responses</h2>
+        <div class="query-display" aria-label="Current query">
             <strong>Query:</strong> {{ query }}
         </div>
         {% if result_id %}
@@ -14,7 +14,8 @@
                 hx-post="/save"
                 hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", csrf_token: {{ csrf_token | tojson }}}'
                 hx-swap="outerHTML"
-                hx-target=".responses-header">
+                hx-target=".responses-header"
+                aria-label="Save these expert responses">
             Save Result
         </button>
         {% endif %}

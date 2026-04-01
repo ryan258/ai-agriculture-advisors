@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     {% block content %}{% endblock %}
 
     <script>
@@ -42,11 +43,28 @@
         document.body.addEventListener('htmx:afterSwap', function(event) {
             const target = event.detail.target;
             target.querySelectorAll('.markdown-content').forEach(renderMarkdown);
+            if (target.id === 'response') {
+                target.focus();
+            }
         });
 
         // Initial markdown parsing on page load
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.markdown-content').forEach(renderMarkdown);
+        });
+
+        document.body.addEventListener('htmx:beforeRequest', function() {
+            const responseRegion = document.getElementById('response');
+            if (responseRegion) {
+                responseRegion.setAttribute('aria-busy', 'true');
+            }
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function() {
+            const responseRegion = document.getElementById('response');
+            if (responseRegion) {
+                responseRegion.setAttribute('aria-busy', 'false');
+            }
         });
     </script>
 </body>

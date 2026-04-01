@@ -1,192 +1,157 @@
 # AI Agriculture Advisors
 
-A Python/FastAPI application that leverages OpenRouter-hosted Large Language Models (LLMs) to provide expert agricultural advice. The system simulates a team of 10 specialized AI-driven agricultural experts, each with domain-specific knowledge and expertise.
+A multi-expert agricultural advisory system powered by LLMs. Ten specialized AI advisors answer questions independently or debate them in roundtable discussions — all through a fast, accessible HTMX interface.
+
+**v2.0.0** — FastAPI + Jinja2 + HTMX + ChromaDB. No React. No Docker. No user accounts. Just bare-metal Python.
 
 ## Features
 
-### Expert Team (10 Specialized Advisors)
+### Ten Domain Experts
 
-**Core Experts:**
-- **Agricultural Science Expert** - Crop science, soil management, farming practices, genetic modifications
-- **Climate Change Impact Analyst** - Weather patterns, climate adaptation, regional impacts
-- **Commodities Trading Specialist** - Market dynamics, supply/demand analysis, price forecasting
-- **AgriTech Innovation Researcher** - AI, IoT, robotics, precision agriculture technologies
-- **Food Supply Chain Analyst** - Distribution networks, sustainability, traceability
+| Key | Expert | Covers |
+|-----|--------|--------|
+| `agriculture` | Agricultural Science Expert | Crop science, soil management, farming practices, genetic modifications |
+| `climate` | Climate Change Impact Analyst | Weather patterns, climate adaptation, regional impacts |
+| `commodities` | Commodities Trading Specialist | Market dynamics, supply/demand analysis, price forecasting |
+| `agritech` | AgriTech Innovation Researcher | AI, IoT, robotics, precision agriculture |
+| `supplychain` | Food Supply Chain Analyst | Distribution networks, sustainability, traceability |
+| `soil` | Soil Health Specialist | Soil composition, nutrient management, regenerative agriculture |
+| `pest` | Pest & Disease Management Expert | IPM, biological control, crop disease identification |
+| `irrigation` | Irrigation & Water Management Specialist | Water conservation, irrigation systems, efficiency |
+| `organic` | Organic Farming Consultant | Certification standards, non-GMO practices, holistic management |
+| `economics` | Agricultural Economics Advisor | Farm budgeting, risk assessment, financial planning |
 
-**Specialized Experts:**
-- **Soil Health Specialist** - Soil composition, nutrient management, regenerative agriculture
-- **Pest & Disease Management Expert** - IPM, biological control, crop disease identification
-- **Irrigation & Water Management Specialist** - Water conservation, irrigation systems, efficiency
-- **Organic Farming Consultant** - Certification standards, non-GMO practices, holistic management
-- **Agricultural Economics Advisor** - Farm budgeting, risk assessment, financial planning
+### What You Can Do
 
-### Core Functionality
+- **Multi-Expert Query** — Select any combination of experts and get independent parallel responses
+- **Roundtable Discussion** — Pick 2+ experts for a multi-round collaborative debate with a synthesized consensus (configurable 1-5 rounds)
+- **Save & Export** — Persist results to ChromaDB and export any saved result as Markdown
+- **History** — Browse and reload previously saved results from the sidebar
 
-- **Multi-Expert Consultation** - Query multiple experts simultaneously (parallel execution)
-- **Roundtable Discussions** - Collaborative multi-round expert debates for complex topics
-- **Persistent History** - Save results to ChromaDB, survives server restarts
-- **Markdown Export** - Download any saved result as a .md file
-- **HTMX-Powered UI** - Fast, modern interface without JavaScript frameworks
-- **Dark Theme** - Candlelight dark theme for comfortable viewing
+### What's Under the Hood
 
-### Architecture
+- **Defensive routing** — Every route has try/except wrapping; errors degrade to styled partials, never raw tracebacks
+- **CSRF protection** — Double-submit cookie tokens validated on every POST
+- **Rate limiting** — slowapi guards on `/query` (30/min) and `/roundtable` (10/min)
+- **Accessibility** — Skip link, ARIA landmarks, focus-visible outlines, keyboard-navigable history, screen-reader-friendly status regions
+- **Candlelight theme** — Dark UI with consistent CSS variables, no build step
 
-- **FastAPI** - Modern async Python web framework
-- **Jinja2 + HTMX** - Server-rendered templates with dynamic updates
-- **ChromaDB** - Vector database for persistent storage
-- **httpx** - Async HTTP client for LLM API calls
-- **Rate Limiting** - Built-in protection with slowapi
+## Quick Start
 
-## Prerequisites
+### Prerequisites
 
-- **Python 3.12** or later
-- **uv** - Fast Python package manager ([install](https://docs.astral.sh/uv/getting-started/installation/))
-- **OpenRouter API Key** - Get one free at [https://openrouter.ai/keys](https://openrouter.ai/keys)
+- **Python 3.12+**
+- **uv** — [install](https://docs.astral.sh/uv/getting-started/installation/)
+- **OpenRouter API key** — free at [openrouter.ai/keys](https://openrouter.ai/keys)
 
-## Installation
-
-### 1. Clone the Repository
+### Setup
 
 ```bash
 git clone https://github.com/yourusername/ai-agriculture-advisors.git
 cd ai-agriculture-advisors
-```
-
-### 2. Install Dependencies
-
-```bash
 uv sync
-```
-
-### 3. Configure Environment
-
-```bash
 cp .env.example .env
+# Edit .env — add your OPENROUTER_API_KEY
 ```
 
-Edit `.env` and add your OpenRouter API key:
+### Run
 
-```env
-OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
-OPENROUTER_MODEL=mistralai/mistral-7b-instruct:free
-PORT=8123
-CHROMADB_PATH=.chromadb
-ALLOW_MISSING_API_KEY=false
-```
-
-### 4. Start the Application
-
-**Using the start script:**
 ```bash
 ./start.sh
 ```
 
-**Or directly with uv:**
+Or directly:
+
 ```bash
 uv run uvicorn main:app --reload --port 8123
 ```
 
-Navigate to `http://localhost:8123`
+Open [http://localhost:8123](http://localhost:8123).
 
 ## Usage
 
-### Web Interface
-
 1. Select one or more experts from the sidebar
-2. Enter your agricultural query
-3. Choose between:
-   - **Submit Query** - Get parallel responses from each selected expert
-   - **Round Table** - Initiate a multi-round discussion (requires 2+ experts)
+2. Type your agricultural question (or click a suggestion chip)
+3. Choose **Submit Query** for independent answers, or **Round Table** for a multi-round discussion (2+ experts required)
 4. **Save** results for persistent storage
-5. **Export** saved results as markdown files
-
-### Expert Role Keys
-
-| Key | Expert Title |
-|-----|-------------|
-| `agriculture` | Agricultural Science Expert |
-| `climate` | Climate Change Impact Analyst |
-| `commodities` | Commodities Trading Specialist |
-| `agritech` | AgriTech Innovation Researcher |
-| `supplychain` | Food Supply Chain Analyst |
-| `soil` | Soil Health Specialist |
-| `pest` | Pest & Disease Management Expert |
-| `irrigation` | Irrigation & Water Management Specialist |
-| `organic` | Organic Farming Consultant |
-| `economics` | Agricultural Economics Advisor |
-
-## Documentation
-
-- `happy-path.md` for a quick start walkthrough
-- `API.md` for endpoint details and CSRF requirements
+5. **Export** any saved result as a `.md` file
 
 ## Project Structure
 
 ```
 ai-agriculture-advisors/
-├── main.py                     # FastAPI routes (thin layer)
+├── main.py                        # FastAPI routes (thin routing layer)
 ├── lib/
-│   ├── engine/                 # Core LLM client and config
+│   ├── engine/                    # LLM client + config
 │   │   ├── config.py
 │   │   └── llm_client.py
-│   ├── experts/                # 10 domain experts
-│   │   ├── base.py             # Abstract Expert class
-│   │   ├── registry.py         # Expert mapping
-│   │   └── *.py                # Individual experts
-│   ├── services/               # Business logic
-│   │   ├── query_service.py    # Parallel expert queries
-│   │   └── roundtable_service.py
-│   ├── storage/                # Persistence
-│   │   └── history_store.py    # ChromaDB integration
+│   ├── experts/                   # 10 domain experts
+│   │   ├── base.py                # Abstract Expert class
+│   │   ├── registry.py            # Expert lookup
+│   │   └── *.py                   # Individual expert modules
+│   ├── services/                  # Business logic
+│   │   ├── query_service.py       # Parallel expert queries
+│   │   └── roundtable_service.py  # Multi-round discussions
+│   ├── storage/                   # Persistence
+│   │   └── history_store.py       # ChromaDB integration
 │   └── utils/
 │       └── logger.py
-├── templates/                  # Jinja2 templates
+├── templates/                     # Jinja2 + HTMX
 │   ├── base.html
 │   ├── index.html
-│   └── partials/               # HTMX partials
-├── static/css/                 # Candlelight dark theme
-├── tests/                      # pytest tests
-├── requirements.txt
-├── pyproject.toml              # black/mypy config
+│   ├── 404.html
+│   └── partials/                  # HTMX swap targets
+│       ├── error.html
+│       ├── responses.html
+│       ├── roundtable.html
+│       ├── response_card.html
+│       ├── save_success.html
+│       └── history_list.html
+├── static/css/style.css           # Candlelight dark theme
+├── tests/                         # pytest suite
+│   ├── test_routes.py
+│   ├── test_history_store.py
+│   ├── test_experts.py
+│   ├── test_services.py
+│   └── test_llm_client.py
+├── docs/architecture/             # Architectural contracts
+│   ├── boundaries.md
+│   ├── tech-stack.md
+│   ├── state.md
+│   ├── execution-context.md
+│   └── arch-decisions.md
 ├── start.sh
+├── pyproject.toml
 └── .env.example
 ```
 
+### Architecture Rules
+
+All business logic lives in `lib/`. `main.py` is a thin seam that maps HTTP to `lib/` calls and returns HTML. `lib/` never imports `main.py` or FastAPI. Every module in `lib/` passes the Arsenal Test — it can be dropped into a different project and used with zero changes. See `docs/architecture/` for the full contracts.
+
 ## Development
 
-### Running Tests
-
 ```bash
-uv run pytest
+uv run pytest          # Run tests (51 tests)
+uv run black .         # Format
+uv run mypy .          # Type check
 ```
 
-### Code Formatting
+### Adding a New Expert
 
-```bash
-uv run black .
-```
-
-### Type Checking
-
-```bash
-uv run mypy .
-```
-
-### Adding New Experts
-
-1. Create a new expert in `lib/experts/`:
+1. Create `lib/experts/your_expert.py`:
 
 ```python
 from .base import Expert
 
-class NewExpert(Expert):
+class YourExpert(Expert):
     @property
     def role(self) -> str:
-        return "newrole"
+        return "yourrole"
 
     @property
     def label(self) -> str:
-        return "New Expert Title"
+        return "Your Expert Title"
 
     @property
     def system_prompt(self) -> str:
@@ -196,13 +161,13 @@ class NewExpert(Expert):
 2. Register in `lib/experts/registry.py`:
 
 ```python
-from .new_expert import NewExpert
+from .your_expert import YourExpert
 
-_new = NewExpert()
+_your = YourExpert()
 
 expert_registry = {
     # ... existing experts
-    "newrole": _new,
+    "yourrole": _your,
 }
 ```
 
@@ -212,16 +177,16 @@ expert_registry = {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | *Required* |
-| `OPENROUTER_API_URL` | OpenRouter API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
-| `OPENROUTER_MODEL` | LLM model to use | `mistralai/mistral-7b-instruct:free` |
+| `OPENROUTER_API_KEY` | OpenRouter API key | *required* |
+| `OPENROUTER_API_URL` | OpenRouter endpoint | `https://openrouter.ai/api/v1/chat/completions` |
+| `OPENROUTER_MODEL` | LLM model | `mistralai/mistral-7b-instruct:free` |
 | `PORT` | Server port | `8123` |
-| `CHROMADB_PATH` | ChromaDB persistence path | `.chromadb` |
-| `ALLOW_MISSING_API_KEY` | Allow startup without API key (tests/dev) | `false` |
+| `CHROMADB_PATH` | Persistence directory | `.chromadb` |
+| `ALLOW_MISSING_API_KEY` | Skip API key check (dev/test) | `false` |
 
-### Supported Models
+### Models
 
-OpenRouter provides access to 100+ models. Popular options:
+Any model available on [OpenRouter](https://openrouter.ai/models) works. Some options:
 
 - `mistralai/mistral-7b-instruct:free` (default, free)
 - `meta-llama/llama-3.1-8b-instruct:free` (free)
@@ -229,70 +194,40 @@ OpenRouter provides access to 100+ models. Popular options:
 - `anthropic/claude-3-sonnet`
 - `openai/gpt-4-turbo`
 
-See the full list at [https://openrouter.ai/models](https://openrouter.ai/models)
-
 ## Troubleshooting
 
-### OpenRouter API Issues
-
-**Error:** `OPENROUTER_API_KEY environment variable is required`
-
-- Create a `.env` file (copy from `.env.example`)
-- Add your API key from https://openrouter.ai/keys
-- Restart the server after updating `.env`
-
-**Error:** `Invalid CSRF token`
-
-- Refresh the page to regenerate the CSRF cookie and retry
-- Ensure your browser accepts cookies for localhost
-
-**Error:** API request failures
-
-- Verify your API key is valid at https://openrouter.ai/keys
-- Check your credit balance at https://openrouter.ai/account
-- Try switching to a free model
-
-### Rate Limits
-
-The application implements rate limiting:
-- `/query`: 30 requests per minute
-- `/roundtable`: 10 requests per minute
+| Problem | Fix |
+|---------|-----|
+| `OPENROUTER_API_KEY environment variable is required` | Copy `.env.example` to `.env`, add your key, restart |
+| `Invalid CSRF token` | Refresh the page to regenerate the cookie |
+| API request failures | Verify key at [openrouter.ai/keys](https://openrouter.ai/keys), check credit balance, try a free model |
+| Rate limited (429) | `/query` allows 30/min, `/roundtable` allows 10/min — wait and retry |
 
 ## Security
 
-- **Rate Limiting** - Prevents API abuse via slowapi
-- **CSRF Protection** - Double-submit cookie token for POST requests
-- **Markdown Sanitization** - DOMPurify sanitizes rendered markdown from LLM output
-- **Form Validation** - Server-side validation for required inputs
+- **CSRF** — Double-submit cookie token on every POST
+- **Rate limiting** — slowapi on LLM-facing endpoints
+- **Markdown sanitization** — DOMPurify on all rendered LLM output
+- **Input validation** — Server-side checks on every form submission
+- **Error containment** — Exceptions render styled partials, never raw tracebacks
 
-For production deployment, additionally consider:
-- HTTPS enforcement
-- Authentication/authorization
-- Secrets management
+For production use, additionally consider HTTPS, authentication, and secrets management.
 
-## Contributing
+## Documentation
 
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Run tests: `pytest`
-4. Format code: `black .`
-5. Check types: `mypy .`
-6. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- `API.md` — Endpoint reference and CSRF requirements
+- `happy-path.md` — Quick-start walkthrough
+- `docs/architecture/` — Architectural contracts (boundaries, state, tech stack, execution context, decisions)
 
 ## Acknowledgments
 
-- **[OpenRouter](https://openrouter.ai/)** - Unified LLM API access
-- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern Python web framework
-- **[HTMX](https://htmx.org/)** - HTML over the wire
-- **[ChromaDB](https://www.trychroma.com/)** - Vector database
-- **[marked.js](https://marked.js.org/)** - Markdown rendering
+- [OpenRouter](https://openrouter.ai/) — Unified LLM API access
+- [FastAPI](https://fastapi.tiangolo.com/) — Async Python web framework
+- [HTMX](https://htmx.org/) — HTML over the wire
+- [ChromaDB](https://www.trychroma.com/) — Vector database
+- [marked.js](https://marked.js.org/) — Markdown rendering
+- [DOMPurify](https://github.com/cure53/DOMPurify) — Sanitization
 
 ---
 
-**Built with care for sustainable agriculture**
+**Built with care for sustainable agriculture.**

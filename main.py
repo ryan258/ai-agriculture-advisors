@@ -29,6 +29,25 @@ logger = logging.getLogger(__name__)
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 CSRF_COOKIE_NAME = "csrf_token"
+SUGGESTED_QUERIES = (
+    {
+        "label": "Soil fertility",
+        "query": "How do I improve soil fertility organically?",
+    },
+    {
+        "label": "Drip irrigation",
+        "query": "What are the best practices for drip irrigation?",
+    },
+    {
+        "label": "Climate impact",
+        "query": "Explain the impact of climate change on wheat yield.",
+    },
+    {
+        "label": "IPM for corn",
+        "query": "Integrated Pest Management for corn.",
+    },
+)
+ROUNDTABLE_ROUND_OPTIONS = (1, 2, 3, 4, 5)
 
 
 def _get_or_create_csrf_token(request: Request) -> str:
@@ -41,6 +60,11 @@ def _get_or_create_csrf_token(request: Request) -> str:
 def _validate_csrf(request: Request, csrf_token: str) -> bool:
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
     return bool(cookie_token and csrf_token and cookie_token == csrf_token)
+
+
+def _normalize_rounds(rounds: int) -> int:
+    """Clamp roundtable rounds to the supported UI range."""
+    return max(ROUNDTABLE_ROUND_OPTIONS[0], min(rounds, ROUNDTABLE_ROUND_OPTIONS[-1]))
 
 
 @asynccontextmanager
@@ -75,19 +99,35 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     """Render the main application page."""
-    csrf_token = _get_or_create_csrf_token(request)
-    experts = get_all_experts()
-    response = templates.TemplateResponse(
-        request, "index.html", {"experts": experts, "csrf_token": csrf_token}
-    )
-    if CSRF_COOKIE_NAME not in request.cookies:
-        response.set_cookie(
-            CSRF_COOKIE_NAME,
-            csrf_token,
-            samesite="lax",
-            httponly=True,
+    try:
+        csrf_token = _get_or_create_csrf_token(request)
+        experts = get_all_experts()
+        response = templates.TemplateResponse(
+            request,
+            "index.html",
+            {
+                "experts": experts,
+                "csrf_token": csrf_token,
+                "suggested_queries": SUGGESTED_QUERIES,
+                "round_options": ROUNDTABLE_ROUND_OPTIONS,
+            },
         )
-    return response
+        if CSRF_COOKIE_NAME not in request.cookies:
+            response.set_cookie(
+                CSRF_COOKIE_NAME,
+                csrf_token,
+                samesite="lax",
+                httponly=True,
+            )
+        return response
+    except Exception as e:
+        logger.error(f"Error loading index: {e}")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": "Failed to load application.", "details": str(e)},
+            status_code=500,
+        )
 
 
 @app.post("/query", response_class=HTMLResponse)
@@ -177,6 +217,7 @@ async def roundtable(
         )
 
     try:
+        rounds = _normalize_rounds(rounds)
         result = await run_roundtable(query, roles, rounds)
         return templates.TemplateResponse(
             request,
@@ -203,38 +244,50 @@ async def roundtable(
 @app.get("/history", response_class=HTMLResponse)
 async def get_history(request: Request) -> HTMLResponse:
     """Get saved query history."""
-    history = history_store.get_history(limit=10)
-    return templates.TemplateResponse(
-        request, "partials/history_list.html", {"history": history}
-    )
+    try:
+        history = history_store.get_history(limit=10)
+        return templates.TemplateResponse(
+            request, "partials/history_list.html", {"history": history}
+        )
+    except Exception as e:
+        logger.error(f"Error loading history: {e}")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": "Failed to load history.", "details": str(e)},
+            status_code=500,
+        )
 
 
 @app.get("/result/{result_id}", response_class=HTMLResponse)
 async def get_result(request: Request, result_id: str) -> HTMLResponse:
     """Get a saved result by ID."""
-    result = history_store.get_result_by_id(result_id)
-    csrf_token = _get_or_create_csrf_token(request)
+    try:
+        result = history_store.get_result_by_id(result_id)
+        csrf_token = _get_or_create_csrf_token(request)
 
-    if not result:
-        return templates.TemplateResponse(
-            request, "partials/error.html", {"message": "Result not found."}
-        )
+        if not result:
+            return templates.TemplateResponse(
+                request,
+                "partials/error.html",
+                {"message": "Result not found."},
+                status_code=404,
+            )
 
-    if result.get("result_type") == "roundtable":
-        return templates.TemplateResponse(
-            request,
-            "partials/roundtable.html",
-            {
-                "query": result["query"],
-                "roles": result.get("experts", []),
-                "rounds": result.get("rounds", 0),
-                "transcript": result.get("transcript", []),
-                "final_answer": result.get("final_answer", ""),
-                "result_id": result_id,
-                "csrf_token": csrf_token,
-            },
-        )
-    else:
+        if result.get("result_type") == "roundtable":
+            return templates.TemplateResponse(
+                request,
+                "partials/roundtable.html",
+                {
+                    "query": result["query"],
+                    "roles": result.get("experts", []),
+                    "rounds": result.get("rounds", 0),
+                    "transcript": result.get("transcript", []),
+                    "final_answer": result.get("final_answer", ""),
+                    "result_id": result_id,
+                    "csrf_token": csrf_token,
+                },
+            )
         return templates.TemplateResponse(
             request,
             "partials/responses.html",
@@ -244,6 +297,14 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
                 "result_id": result_id,
                 "csrf_token": csrf_token,
             },
+        )
+    except Exception as e:
+        logger.error(f"Error loading result {result_id}: {e}")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": "Failed to load result.", "details": str(e)},
+            status_code=500,
         )
 
 
@@ -317,24 +378,34 @@ async def save_result(
 
 
 @app.get("/export/{result_id}")
-async def export_result(result_id: str) -> Response:
+async def export_result(request: Request, result_id: str) -> Response:
     """Export a saved result as markdown."""
-    markdown = history_store.export_to_markdown(result_id)
+    try:
+        markdown = history_store.export_to_markdown(result_id)
 
-    if not markdown:
+        if not markdown:
+            return templates.TemplateResponse(
+                request,
+                "404.html",
+                {"message": "Saved result not found.", "result_id": result_id},
+                status_code=404,
+            )
+
         return Response(
-            content="Result not found",
-            status_code=404,
-            media_type="text/plain",
+            content=markdown,
+            media_type="text/markdown",
+            headers={
+                "Content-Disposition": f"attachment; filename=agri-query-{result_id}.md"
+            },
         )
-
-    return Response(
-        content=markdown,
-        media_type="text/markdown",
-        headers={
-            "Content-Disposition": f"attachment; filename=agri-query-{result_id}.md"
-        },
-    )
+    except Exception as e:
+        logger.error(f"Error exporting result {result_id}: {e}")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": "Failed to export result.", "details": str(e)},
+            status_code=500,
+        )
 
 
 if __name__ == "__main__":

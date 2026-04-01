@@ -1,7 +1,7 @@
-<div class="roundtable-container">
+<div class="roundtable-container" role="region" aria-labelledby="roundtable-title">
     <div class="roundtable-header">
-        <h2>Roundtable Discussion</h2>
-        <div class="query-display">
+        <h2 id="roundtable-title">Roundtable Discussion</h2>
+        <div class="query-display" aria-label="Current query">
             <strong>Query:</strong> {{ query }}
         </div>
         <div class="roundtable-meta">
@@ -18,7 +18,8 @@
                 hx-post="/save"
                 hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", roundtable_data: JSON.stringify({{ {"transcript": transcript, "final_answer": final_answer, "rounds": rounds, "roles": roles} | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
                 hx-swap="outerHTML"
-                hx-target=".roundtable-header">
+                hx-target=".roundtable-header"
+                aria-label="Save this roundtable discussion">
             Save Result
         </button>
         {% endif %}
@@ -26,12 +27,12 @@
 
     <div class="card">
         <h3>Discussion Transcript</h3>
-        <div class="transcript-container">
+        <div class="transcript-container" aria-label="Roundtable transcript">
             {% for entry in transcript %}
-            <div class="transcript-message">
+            <article class="transcript-message">
                 <div class="transcript-speaker">{{ entry.speaker }} <span class="round-badge">Round {{ entry.round }}</span></div>
                 <div class="transcript-text markdown-content">{{ entry.text }}</div>
-            </div>
+            </article>
             {% if not loop.last %}
             <hr class="transcript-divider">
             {% endif %}
