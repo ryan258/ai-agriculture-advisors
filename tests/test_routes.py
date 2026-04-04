@@ -240,6 +240,13 @@ def test_export_not_found(client: TestClient) -> None:
     assert "Result Not Found" in response.text
 
 
+def test_brief_export_not_found(client: TestClient) -> None:
+    """Test brief export endpoint with invalid ID."""
+    response = client.get("/export/invalid-id/brief")
+    assert response.status_code == 404
+    assert "not found" in response.text.lower()
+
+
 def test_result_not_found(client: TestClient) -> None:
     """Test result endpoint with invalid ID."""
     response = client.get("/result/invalid-id")
@@ -268,6 +275,41 @@ def test_export_handles_store_error(client: TestClient) -> None:
 
     assert response.status_code == 500
     assert "failed to export result" in response.text.lower()
+    assert "boom" in response.text
+
+
+@patch("main.build_executive_brief_html", return_value="<html><body>Brief</body></html>")
+def test_brief_export_success(mock_render_brief, client: TestClient) -> None:
+    """Test successful executive brief export."""
+    result_id = main.history_store.save_result(
+        query="How do I reduce drought risk?",
+        experts=["agriculture"],
+        responses=[
+            {
+                "role": "agriculture",
+                "label": "Agricultural Science Expert",
+                "response": "Start with soil tests.",
+            }
+        ],
+        result_type="query",
+    )
+
+    response = client.get(f"/export/{result_id}/brief")
+
+    assert response.status_code == 200
+    assert response.text == "<html><body>Brief</body></html>"
+    mock_render_brief.assert_called_once()
+
+
+def test_brief_export_handles_store_error(client: TestClient) -> None:
+    """Test executive brief export failures degrade to the error partial."""
+    with patch.object(
+        main.history_store, "get_result_by_id", side_effect=RuntimeError("boom")
+    ):
+        response = client.get("/export/abc12345/brief")
+
+    assert response.status_code == 500
+    assert "failed to build executive brief" in response.text.lower()
     assert "boom" in response.text
 
 
@@ -312,6 +354,7 @@ def test_save_query_result_success(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "Saved" in response.text
+    assert "/export/abc12345/brief" in response.text
     assert "/export/abc12345" in response.text
     mock_save.assert_called_once_with(
         query="How do I protect yield?",
@@ -353,6 +396,7 @@ def test_save_roundtable_result_success(client: TestClient) -> None:
     assert response.status_code == 200
     assert "Saved" in response.text
     assert "Participants" in response.text
+    assert "/export/def67890/brief" in response.text
     mock_save.assert_called_once_with(
         query="How should I manage drought risk?",
         experts=["agriculture", "climate"],

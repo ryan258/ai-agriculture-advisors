@@ -122,6 +122,15 @@ Returns a Markdown file download.
 
 ---
 
+### 8) Export Executive Brief
+
+**GET** `/export/{result_id}/brief`
+
+Returns a rendered HTML executive brief built from the saved result using the
+`executive-reporting` component package.
+
+---
+
 ## Expert Roles
 
 | Key | Expert Title |

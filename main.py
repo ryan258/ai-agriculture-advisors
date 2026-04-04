@@ -18,7 +18,7 @@ from slowapi.util import get_remote_address
 from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
 from lib.experts import get_all_experts
-from lib.services import query_experts, run_roundtable
+from lib.services import build_executive_brief_html, query_experts, run_roundtable
 from lib.storage import history_store
 from lib.utils import setup_logging
 
@@ -404,6 +404,31 @@ async def export_result(request: Request, result_id: str) -> Response:
             request,
             "partials/error.html",
             {"message": "Failed to export result.", "details": str(e)},
+            status_code=500,
+        )
+
+
+@app.get("/export/{result_id}/brief", response_class=HTMLResponse)
+async def export_result_brief(request: Request, result_id: str) -> HTMLResponse:
+    """Render a saved result as an executive brief."""
+    try:
+        result = history_store.get_result_by_id(result_id)
+        if not result:
+            return templates.TemplateResponse(
+                request,
+                "partials/error.html",
+                {"message": "Result not found."},
+                status_code=404,
+            )
+
+        html = build_executive_brief_html(result)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error rendering executive brief for {result_id}: {e}")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": "Failed to build executive brief.", "details": str(e)},
             status_code=500,
         )
 

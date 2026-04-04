@@ -25,7 +25,7 @@ A multi-expert agricultural advisory system powered by LLMs. Ten specialized AI 
 
 - **Multi-Expert Query** — Select any combination of experts and get independent parallel responses
 - **Roundtable Discussion** — Pick 2+ experts for a multi-round collaborative debate with a synthesized consensus (configurable 1-5 rounds)
-- **Save & Export** — Persist results to ChromaDB and export any saved result as Markdown
+- **Save & Export** — Persist results to ChromaDB, export Markdown, or open a rendered executive brief for any saved result
 - **History** — Browse and reload previously saved results from the sidebar
 
 ### What's Under the Hood
@@ -74,7 +74,7 @@ Open [http://localhost:8123](http://localhost:8123).
 2. Type your agricultural question (or click a suggestion chip)
 3. Choose **Submit Query** for independent answers, or **Round Table** for a multi-round discussion (2+ experts required)
 4. **Save** results for persistent storage
-5. **Export** any saved result as a `.md` file
+5. **Export** any saved result as Markdown or open the executive brief view
 
 ## Project Structure
 
@@ -90,6 +90,7 @@ ai-agriculture-advisors/
 │   │   ├── registry.py            # Expert lookup
 │   │   └── *.py                   # Individual expert modules
 │   ├── services/                  # Business logic
+│   │   ├── briefing_service.py    # Executive brief rendering from saved results
 │   │   ├── query_service.py       # Parallel expert queries
 │   │   └── roundtable_service.py  # Multi-round discussions
 │   ├── storage/                   # Persistence
