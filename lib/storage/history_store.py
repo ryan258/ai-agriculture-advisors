@@ -162,5 +162,6 @@ class HistoryStore:
             **document,
         }
 
+
 # Singleton instance
 history_store = HistoryStore()

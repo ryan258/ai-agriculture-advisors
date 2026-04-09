@@ -12,7 +12,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "chromadb>=0.4.22",
     "slowapi>=0.1.9",
-    "executive-reporting",
 ]
 
 [dependency-groups]
@@ -57,6 +56,3 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-
-[tool.uv.sources]
-executive-reporting = { path = "../components/executive_reporting", editable = true }

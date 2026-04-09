@@ -157,7 +157,9 @@ async def test_roundtable_multiple_rounds(
 @patch("lib.services.roundtable_service.get_expert")
 @patch("lib.services.roundtable_service.get_llm_client")
 async def test_roundtable_falls_back_to_text_consensus_on_structured_error(
-    mock_get_llm_client: AsyncMock, mock_get_expert: AsyncMock
+    mock_get_llm_client: AsyncMock,
+    mock_get_expert: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test structured consensus failures fall back to plain-text synthesis."""
     mock_expert = AsyncMock()
@@ -170,10 +172,14 @@ async def test_roundtable_falls_back_to_text_consensus_on_structured_error(
     mock_llm.generate = AsyncMock(return_value="Fallback consensus")
     mock_get_llm_client.return_value = mock_llm
 
-    result = await run_roundtable("Test query", ["agriculture", "climate"], rounds=1)
+    with caplog.at_level("WARNING"):
+        result = await run_roundtable(
+            "Test query", ["agriculture", "climate"], rounds=1
+        )
 
     assert result["final_answer"] == "Fallback consensus"
     assert result["consensus_brief"] is None
+    assert "Structured consensus generation failed" in caplog.text
 
 
 @pytest.mark.asyncio

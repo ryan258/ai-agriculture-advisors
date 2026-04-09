@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from lib.services.briefing_service import (
+    _collapse_duplicate_consensus_sections,
+    _compose_executive_summary,
     _extract_headline_and_body,
     _title_case_query,
     build_executive_brief_html,
@@ -196,6 +198,43 @@ def test_builds_roundtable_brief_from_structured_consensus() -> None:
     assert "Legacy fallback text" not in markdown
 
 
+def test_structured_recommendation_defaults_are_built_in_service_layer() -> None:
+    result = {
+        "id": "structureddefaults2468",
+        "query": "What should drought planning prioritize?",
+        "timestamp": "2026-04-08T15:00:00",
+        "result_type": "roundtable",
+        "experts": ["agriculture", "climate"],
+        "rounds": 2,
+        "transcript": [],
+        "final_answer": "",
+        "consensus_brief": {
+            "governing_insight": "Protect water first, then expand.",
+            "executive_summary": ["Irrigation visibility should precede expansion."],
+            "key_findings": [],
+            "decision_implications": [],
+            "recommendations": [
+                {
+                    "owner": "",
+                    "action": "Install moisture sensors.",
+                    "expected_impact": "",
+                    "key_risk": "",
+                }
+            ],
+            "limitations": [],
+        },
+    }
+
+    html = build_executive_brief_html(result)
+    markdown = build_executive_brief_markdown(result)
+
+    assert "Shared" in html
+    assert "Directional upside; validate locally." in html
+    assert "Execution quality and timing." in html
+    assert "- **Expected Impact:** Directional upside; validate locally." in markdown
+    assert "- **Key Risk:** Execution quality and timing." in markdown
+
+
 def test_flattens_dict_items_in_decision_implications() -> None:
     """Persisted LLM responses that violated the schema with dict items should render as prose."""
     result = {
@@ -283,6 +322,34 @@ def test_extract_headline_and_body_splits_long_insight() -> None:
     for sentence in sentences:
         if sentence not in headline:
             assert sentence in joined_body
+
+
+def test_compose_executive_summary_skips_original_insight_duplicate() -> None:
+    insight = "Protect water first, then expand into acreage only after telemetry is in place."
+
+    summary = _compose_executive_summary(
+        headline="Protect water first, then expand into acreage only after telemetry is in place.",
+        remainder_paragraphs=[],
+        existing_summary=[insight],
+        original_insight=insight,
+    )
+
+    assert summary == []
+
+
+def test_collapse_duplicate_consensus_sections_removes_legacy_repeat_block() -> None:
+    duplicated = (
+        "Executive Summary\n"
+        "Consensus Answer - Smart Investments for Summer 2026\n"
+        "Investment Area | What to Do | Why It Matters\n\n"
+        "Consensus Answer - Smart Investments for Summer 2026\n"
+        "Investment Area | What to Do | Why It Matters"
+    )
+
+    collapsed = _collapse_duplicate_consensus_sections(duplicated)
+
+    assert collapsed.count("Consensus Answer - Smart Investments for Summer 2026") == 1
+    assert collapsed.startswith("Executive Summary")
 
 
 def test_roundtable_brief_breaks_wall_of_text_governing_insight() -> None:

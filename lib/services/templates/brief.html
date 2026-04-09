@@ -101,10 +101,10 @@
                     <tbody>
                         {% for recommendation in brief.recommendations %}
                         <tr>
-                            <td>{{ recommendation.owner or "Shared" }}</td>
+                            <td>{{ recommendation.owner }}</td>
                             <td>{{ recommendation.action }}</td>
-                            <td>{{ recommendation.expected_impact or "Directional upside; validate locally." }}</td>
-                            <td>{{ recommendation.key_risk or "Execution quality and timing." }}</td>
+                            <td>{{ recommendation.expected_impact }}</td>
+                            <td>{{ recommendation.key_risk }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

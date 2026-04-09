@@ -11,9 +11,16 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from ._text_utils import clean_string_list as _clean_string_list
+from ._text_utils import coerce_to_string as _coerce_to_string
+
 _ORGANIZATION = "AI Agriculture Advisors"
 _HEADER_LABEL = "Agricultural Advisory"
 _PUBLICATION_LABEL = "Executive Brief"
+_SERVICE_TEMPLATE_DIR = Path(__file__).resolve().with_name("templates")
+_DEFAULT_RECOMMENDATION_OWNER = "Shared"
+_DEFAULT_RECOMMENDATION_IMPACT = "Directional upside; validate locally."
+_DEFAULT_RECOMMENDATION_RISK = "Execution quality and timing."
 _HORIZONTAL_RULE_RE = re.compile(r"^\s*[-*_]{3,}\s*$")
 _HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s*(.+?)\s*$")
 _ORDERED_PREFIX_RE = re.compile(r"^\s*\d+[.)]\s*")
@@ -24,6 +31,10 @@ _LABEL_PREFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /&()'’+-]{1,40}:\s*")
 _BOLD_ONLY_RE = re.compile(r"^\*\*(.+?)\*\*$")
 _BOLD_PREFIX_RE = re.compile(r"^\*\*(.+?)\*\*:\s*(.+)$")
 _CONSENSUS_TITLE_RE = re.compile(r"Consensus Answer\s*[–—:-]\s*(.+)$", re.IGNORECASE)
+_CONSENSUS_SECTION_START_RE = re.compile(
+    r"^Consensus Answer\s*[–—:-]\s*.+$",
+    re.IGNORECASE | re.MULTILINE,
+)
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'“‘])")
 _HEADLINE_MAX_CHARS = 260
 _SUMMARY_SENTENCES_PER_PARAGRAPH = 3
@@ -98,9 +109,8 @@ class BriefDocument:
 
 @lru_cache(maxsize=1)
 def _get_template_environment() -> Environment:
-    templates_dir = Path(__file__).resolve().parents[2] / "templates"
     return Environment(
-        loader=FileSystemLoader(str(templates_dir)),
+        loader=FileSystemLoader(str(_SERVICE_TEMPLATE_DIR)),
         autoescape=select_autoescape(["html", "xml"]),
         trim_blocks=True,
         lstrip_blocks=True,
@@ -261,6 +271,7 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
             )
         if not recommendations:
             recommendations = _build_recommendations_from_consensus_matrix(inline_rows)
+    recommendations = _apply_recommendation_defaults(recommendations)
 
     governing_insight = (
         bottom_line
@@ -386,6 +397,7 @@ def _build_roundtable_brief_from_structured(
         for item in consensus_brief.get("recommendations", [])
         if isinstance(item, dict) and str(item.get("action", "")).strip()
     ]
+    recommendations = _apply_recommendation_defaults(recommendations)
     limitations = [
         "Built from a saved multi-expert roundtable consensus without re-running the discussion.",
     ]
@@ -539,6 +551,24 @@ def _build_recommendations_from_conclusions(
         index += 1
 
     return recommendations, bottom_line
+
+
+def _apply_recommendation_defaults(
+    recommendations: list[BriefRecommendation],
+) -> list[BriefRecommendation]:
+    normalized: list[BriefRecommendation] = []
+    for recommendation in recommendations:
+        normalized.append(
+            BriefRecommendation(
+                action=recommendation.action,
+                owner=recommendation.owner or _DEFAULT_RECOMMENDATION_OWNER,
+                expected_impact=(
+                    recommendation.expected_impact or _DEFAULT_RECOMMENDATION_IMPACT
+                ),
+                key_risk=recommendation.key_risk or _DEFAULT_RECOMMENDATION_RISK,
+            )
+        )
+    return normalized
 
 
 def _build_key_findings_from_consensus_matrix(
@@ -724,7 +754,7 @@ def _extract_consensus_title(text: str) -> str:
 
 def _collapse_duplicate_consensus_sections(text: str) -> str:
     normalized = str(text).replace("\r\n", "\n").strip()
-    matches = list(_CONSENSUS_TITLE_RE.finditer(normalized))
+    matches = list(_CONSENSUS_SECTION_START_RE.finditer(normalized))
     if len(matches) < 2:
         return normalized
 
@@ -804,7 +834,7 @@ def _render_brief_markdown(brief: BriefDocument) -> str:
     if brief.recommendations:
         lines.extend(["## Recommendations", ""])
         for recommendation in brief.recommendations:
-            lines.extend([f"### {recommendation.owner or 'Shared'}", ""])
+            lines.extend([f"### {recommendation.owner}", ""])
             lines.append(f"- **Action:** {recommendation.action}")
             if recommendation.expected_impact:
                 lines.append(f"- **Expected Impact:** {recommendation.expected_impact}")
@@ -969,27 +999,6 @@ def _compose_executive_summary(
             _add(chunk)
 
     return paragraphs
-
-
-def _clean_string_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [text for item in value if (text := _coerce_to_string(item))]
-
-
-def _coerce_to_string(value: Any) -> str:
-    """Flatten schema-violating LLM payloads (dicts, nested lists) into readable strings."""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, dict):
-        parts = [_coerce_to_string(item) for item in value.values()]
-        return " — ".join(part for part in parts if part)
-    if isinstance(value, (list, tuple)):
-        parts = [_coerce_to_string(item) for item in value]
-        return " ".join(part for part in parts if part)
-    return str(value).strip()
 
 
 def _split_labeled_text(text: str) -> tuple[str, str]:

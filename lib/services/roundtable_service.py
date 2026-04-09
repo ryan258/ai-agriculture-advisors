@@ -8,6 +8,9 @@ import httpx
 from lib.experts import get_expert
 from lib.engine.llm_client import get_llm_client
 
+from ._text_utils import clean_string_list as _clean_string_list
+from ._text_utils import coerce_to_string as _coerce_to_string
+
 logger = logging.getLogger(__name__)
 
 # Immutable JSON schema for structured consensus generation. Do not mutate at runtime.
@@ -211,7 +214,10 @@ Requirements:
             raise ValueError("Structured consensus was semantically empty")
         return _structured_consensus_to_markdown(consensus_brief), consensus_brief
     except (httpx.HTTPError, ValueError) as e:
-        logger.error(f"Error generating structured consensus: {e}")
+        logger.warning(
+            "Structured consensus generation failed; falling back to plain-text synthesis: %s",
+            e,
+        )
 
     fallback_prompt = f"""Based on the following expert discussion, provide a consensus answer to the original query.
 
@@ -268,27 +274,6 @@ def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
         ],
         "limitations": _clean_string_list(payload.get("limitations", [])),
     }
-
-
-def _clean_string_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [text for item in value if (text := _coerce_to_string(item))]
-
-
-def _coerce_to_string(value: Any) -> str:
-    """Flatten schema-violating LLM payloads (dicts, nested lists) into readable strings."""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, dict):
-        parts = [_coerce_to_string(item) for item in value.values()]
-        return " — ".join(part for part in parts if part)
-    if isinstance(value, (list, tuple)):
-        parts = [_coerce_to_string(item) for item in value]
-        return " ".join(part for part in parts if part)
-    return str(value).strip()
 
 
 def _has_meaningful_consensus_brief(consensus_brief: dict[str, Any]) -> bool:

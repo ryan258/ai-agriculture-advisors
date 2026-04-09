@@ -126,63 +126,10 @@ After completing Steps 0-3, output the review in **exactly** this format:
 
 ---
 
-## GitNexus Integration
-
-This project is indexed by GitNexus as **ai-agriculture-advisors**. The review protocol above uses GitNexus for dependency mapping. Here is the full tool reference:
-
-### Tools
-
-| Tool | Purpose | Command |
-|------|---------|---------|
-| `impact` | Blast radius of a symbol | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Scope check for staged/all changes | `gitnexus_detect_changes({scope: "staged"})` |
-| `context` | Full caller/callee graph for a symbol | `gitnexus_context({name: "symbolName"})` |
-| `query` | Find execution flows by concept | `gitnexus_query({query: "concept"})` |
-| `rename` | Safe multi-file rename (dry_run first) | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
-
-### Risk Levels
-
-| Depth | Meaning | Review Action |
-|-------|---------|---------------|
-| d=1 | WILL BREAK — direct callers/importers | Must verify updated or unaffected |
-| d=2 | LIKELY AFFECTED — indirect deps | Flag as warning, recommend testing |
-| d=3 | MAY NEED TESTING — transitive | Note if on critical path |
-
-### Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/ai-agriculture-advisors/context` | Index freshness check |
-| `gitnexus://repo/ai-agriculture-advisors/processes` | All execution flows |
-| `gitnexus://repo/ai-agriculture-advisors/process/{name}` | Step-by-step trace |
-
-### Index Maintenance
-
-After commits, the index goes stale. Re-analyze:
-
-```bash
-npx gitnexus analyze              # standard
-npx gitnexus analyze --embeddings # if embeddings existed (check .gitnexus/meta.json)
-```
-
-> A PostToolUse hook handles this automatically after `git commit` and `git merge`.
-
-### Skill Files
-
-| Task | Skill |
-|------|-------|
-| Architecture exploration | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Impact analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Debugging | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Refactoring | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tool/schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **ai-agriculture-advisors** (300 symbols, 693 relationships, 18 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **ai-agriculture-advisors** (543 symbols, 1390 relationships, 40 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
