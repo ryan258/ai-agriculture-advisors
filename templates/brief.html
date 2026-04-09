@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ brief.title }} | {{ brief.publication_label }}</title>
+    <link rel="stylesheet" href="/static/css/brief.css">
+</head>
+<body>
+    <main class="brief-layout">
+        <section class="brief-hero">
+            <p class="brief-eyebrow">{{ brief.header_label }} | {{ brief.organization }}</p>
+            <h1>{{ brief.title }}</h1>
+            {% if brief.governing_question and brief.governing_question != brief.title %}
+            <p class="brief-question">{{ brief.governing_question }}</p>
+            {% endif %}
+            <p class="brief-subtitle">{{ brief.subtitle }}</p>
+            <div class="brief-meta">
+                {% if brief.date_label %}
+                <span>{{ brief.date_label }}</span>
+                {% endif %}
+                <span>{{ brief.publication_label }}</span>
+            </div>
+        </section>
+
+        <section class="brief-section">
+            <div class="section-heading">
+                <p class="section-kicker">Executive Summary</p>
+                <h2>Decision Frame</h2>
+            </div>
+            <article class="insight-card">
+                <p class="label">Governing Insight</p>
+                <p class="insight-text">{{ brief.governing_insight }}</p>
+            </article>
+
+            {% if brief.executive_summary %}
+            <div class="summary-copy">
+                {% for paragraph in brief.executive_summary %}
+                <p>{{ paragraph }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if brief.metrics %}
+            <div class="metric-grid">
+                {% for metric in brief.metrics %}
+                <article class="metric-card">
+                    <p class="metric-value">{{ metric.value }}</p>
+                    <p class="metric-label">{{ metric.label }}</p>
+                </article>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        {% if brief.findings %}
+        <section class="brief-section">
+            <div class="section-heading">
+                <p class="section-kicker">Key Findings</p>
+                <h2>What Matters Most</h2>
+            </div>
+            <div class="finding-list">
+                {% for finding in brief.findings %}
+                <article class="finding-card">
+                    <div class="finding-head">
+                        <h3>{{ finding.title }}</h3>
+                    </div>
+                    <p class="finding-claim">{{ finding.claim }}</p>
+                    {% if finding.evidence_points %}
+                    <ul class="bullet-list">
+                        {% for point in finding.evidence_points %}
+                        <li>{{ point }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if finding.implication %}
+                    <p class="supporting-text"><strong>Implication:</strong> {{ finding.implication }}</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if brief.recommendations %}
+        <section class="brief-section">
+            <div class="section-heading">
+                <p class="section-kicker">Recommendations</p>
+                <h2>Recommended Moves</h2>
+            </div>
+            <div class="table-shell">
+                <table class="recommendation-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Area / Owner</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">Expected Impact</th>
+                            <th scope="col">Key Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recommendation in brief.recommendations %}
+                        <tr>
+                            <td>{{ recommendation.owner or "Shared" }}</td>
+                            <td>{{ recommendation.action }}</td>
+                            <td>{{ recommendation.expected_impact or "Directional upside; validate locally." }}</td>
+                            <td>{{ recommendation.key_risk or "Execution quality and timing." }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if brief.decision_implications %}
+        <section class="brief-section">
+            <div class="section-heading">
+                <p class="section-kicker">Decision Implications</p>
+                <h2>Tradeoffs and Conditions</h2>
+            </div>
+            <ul class="bullet-list implications-list">
+                {% for implication in brief.decision_implications %}
+                <li>{{ implication }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if brief.methodology or brief.limitations %}
+        <section class="brief-section note-grid">
+            {% if brief.methodology %}
+            <article class="note-card">
+                <div class="section-heading compact">
+                    <p class="section-kicker">Methodology</p>
+                    <h2>How This Brief Was Built</h2>
+                </div>
+                <ul class="bullet-list">
+                    {% for item in brief.methodology %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+            {% endif %}
+
+            {% if brief.limitations %}
+            <article class="note-card">
+                <div class="section-heading compact">
+                    <p class="section-kicker">Limitations</p>
+                    <h2>What to Treat Carefully</h2>
+                </div>
+                <ul class="bullet-list">
+                    {% for item in brief.limitations %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if brief.sources %}
+        <section class="brief-section">
+            <div class="section-heading compact">
+                <p class="section-kicker">Sources</p>
+                <h2>Inputs Used</h2>
+            </div>
+            <ul class="source-list">
+                {% for source in brief.sources %}
+                <li>{{ source }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -16,7 +16,7 @@
         {% else %}
         <button class="btn outline save-btn"
                 hx-post="/save"
-                hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", roundtable_data: JSON.stringify({{ {"transcript": transcript, "final_answer": final_answer, "rounds": rounds, "roles": roles} | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
+                hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", roundtable_data: JSON.stringify({{ {"transcript": transcript, "final_answer": final_answer, "consensus_brief": consensus_brief | default(None), "rounds": rounds, "roles": roles} | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
                 hx-swap="outerHTML"
                 hx-target=".roundtable-header"
                 aria-label="Save this roundtable discussion">

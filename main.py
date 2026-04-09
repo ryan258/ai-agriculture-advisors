@@ -18,7 +18,12 @@ from slowapi.util import get_remote_address
 from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
 from lib.experts import get_all_experts
-from lib.services import build_executive_brief_html, query_experts, run_roundtable
+from lib.services import (
+    build_executive_brief_html,
+    build_executive_brief_markdown,
+    query_experts,
+    run_roundtable,
+)
 from lib.storage import history_store
 from lib.utils import setup_logging
 
@@ -228,6 +233,7 @@ async def roundtable(
                 "rounds": result["rounds"],
                 "transcript": result["transcript"],
                 "final_answer": result["final_answer"],
+                "consensus_brief": result.get("consensus_brief"),
                 "result_id": None,
                 "csrf_token": csrf_token,
             },
@@ -284,6 +290,7 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
                     "rounds": result.get("rounds", 0),
                     "transcript": result.get("transcript", []),
                     "final_answer": result.get("final_answer", ""),
+                    "consensus_brief": result.get("consensus_brief"),
                     "result_id": result_id,
                     "csrf_token": csrf_token,
                 },
@@ -381,15 +388,15 @@ async def save_result(
 async def export_result(request: Request, result_id: str) -> Response:
     """Export a saved result as markdown."""
     try:
-        markdown = history_store.export_to_markdown(result_id)
-
-        if not markdown:
+        result = history_store.get_result_by_id(result_id)
+        if not result:
             return templates.TemplateResponse(
                 request,
                 "404.html",
                 {"message": "Saved result not found.", "result_id": result_id},
                 status_code=404,
             )
+        markdown = build_executive_brief_markdown(result)
 
         return Response(
             content=markdown,

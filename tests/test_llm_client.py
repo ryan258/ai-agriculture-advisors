@@ -1,5 +1,6 @@
 """Tests for the LLM client."""
 
+import json
 import pytest
 import httpx
 import respx
@@ -72,6 +73,62 @@ async def test_generate_empty_choices(client: LLMClient) -> None:
 
     with pytest.raises(ValueError, match="No choices"):
         await client.generate("Test prompt", "Test system prompt")
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_generate_json_success(client: LLMClient) -> None:
+    """Test structured JSON generation."""
+    route = respx.post("https://api.test.com/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"governing_insight":"Use irrigation discipline."}'
+                        }
+                    }
+                ]
+            },
+        )
+    )
+
+    result = await client.generate_json(
+        "Test prompt",
+        "Test system prompt",
+        schema_name="roundtable_consensus",
+        schema={
+            "type": "object",
+            "properties": {"governing_insight": {"type": "string"}},
+            "required": ["governing_insight"],
+        },
+    )
+
+    payload = json.loads(route.calls[0].request.content)
+    assert payload["response_format"]["type"] == "json_schema"
+    assert payload["response_format"]["json_schema"]["name"] == "roundtable_consensus"
+    assert result["governing_insight"] == "Use irrigation discipline."
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_generate_json_invalid_payload(client: LLMClient) -> None:
+    """Test invalid structured payload handling."""
+    respx.post("https://api.test.com/v1/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "not-json"}}]},
+        )
+    )
+
+    with pytest.raises(ValueError, match="structured API response format"):
+        await client.generate_json(
+            "Test prompt",
+            "Test system prompt",
+            schema_name="roundtable_consensus",
+            schema={"type": "object"},
+        )
 
 
 @respx.mock(assert_all_mocked=False)

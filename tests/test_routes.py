@@ -269,7 +269,7 @@ def test_result_handles_store_error(client: TestClient) -> None:
 def test_export_handles_store_error(client: TestClient) -> None:
     """Test export failures degrade to the error partial."""
     with patch.object(
-        main.history_store, "export_to_markdown", side_effect=RuntimeError("boom")
+        main.history_store, "get_result_by_id", side_effect=RuntimeError("boom")
     ):
         response = client.get("/export/abc12345")
 
@@ -278,7 +278,9 @@ def test_export_handles_store_error(client: TestClient) -> None:
     assert "boom" in response.text
 
 
-@patch("main.build_executive_brief_html", return_value="<html><body>Brief</body></html>")
+@patch(
+    "main.build_executive_brief_html", return_value="<html><body>Brief</body></html>"
+)
 def test_brief_export_success(mock_render_brief, client: TestClient) -> None:
     """Test successful executive brief export."""
     result_id = main.history_store.save_result(
@@ -311,6 +313,63 @@ def test_brief_export_handles_store_error(client: TestClient) -> None:
     assert response.status_code == 500
     assert "failed to build executive brief" in response.text.lower()
     assert "boom" in response.text
+
+
+def test_brief_export_renders_saved_structured_roundtable(client: TestClient) -> None:
+    """Test brief export uses persisted structured consensus for roundtables."""
+    result_id = main.history_store.save_result(
+        query="How should drought planning prioritize?",
+        experts=["agriculture", "climate"],
+        responses=[],
+        result_type="roundtable",
+        roundtable_data={
+            "roles": ["agriculture", "climate"],
+            "rounds": 2,
+            "transcript": [
+                {
+                    "speaker": "Agricultural Science Expert",
+                    "text": "Start with soil moisture tracking.",
+                    "round": 1,
+                }
+            ],
+            "final_answer": "Legacy fallback that should not drive the brief.",
+            "consensus_brief": {
+                "governing_insight": "Protect water first, then expand.",
+                "executive_summary": [
+                    "Irrigation visibility should precede expansion."
+                ],
+                "key_findings": [
+                    {
+                        "title": "Water discipline",
+                        "claim": "Instrumentation comes before acreage growth.",
+                        "evidence_points": ["The experts aligned on sequencing."],
+                        "implication": "Avoid capital expansion without telemetry.",
+                    }
+                ],
+                "decision_implications": [
+                    "Expansion timing depends on water data quality."
+                ],
+                "recommendations": [
+                    {
+                        "owner": "Producers",
+                        "action": "Install moisture sensors.",
+                        "expected_impact": "Tighter irrigation windows.",
+                        "key_risk": "Poor calibration weakens decisions.",
+                    }
+                ],
+                "limitations": [
+                    "The roundtable did not quantify local payback periods."
+                ],
+            },
+        },
+    )
+
+    response = client.get(f"/export/{result_id}/brief")
+
+    assert response.status_code == 200
+    assert "Protect water first, then expand." in response.text
+    assert "Install moisture sensors." in response.text
+    assert "Legacy fallback that should not drive the brief." not in response.text
 
 
 def test_query_rejects_invalid_csrf(client: TestClient) -> None:

@@ -2,22 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 import re
 from typing import Any
 
-from executive_reporting import (
-    BriefMetadataItem,
-    BriefFinding,
-    BriefRecommendation,
-    EvidenceMetric,
-    EvidenceObservation,
-    EvidencePackage,
-    ExecutiveBrief,
-    ExecutiveBriefingComponent,
-    StrategicAnalysisPlugin,
-)
-
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 _ORGANIZATION = "AI Agriculture Advisors"
 _HEADER_LABEL = "Agricultural Advisory"
@@ -31,27 +23,108 @@ _DECORATIVE_PREFIX_RE = re.compile(r"^[^\w(]+")
 _LABEL_PREFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /&()'’+-]{1,40}:\s*")
 _BOLD_ONLY_RE = re.compile(r"^\*\*(.+?)\*\*$")
 _BOLD_PREFIX_RE = re.compile(r"^\*\*(.+?)\*\*:\s*(.+)$")
+_CONSENSUS_TITLE_RE = re.compile(r"Consensus Answer\s*[–—:-]\s*(.+)$", re.IGNORECASE)
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'“‘])")
+_HEADLINE_MAX_CHARS = 260
+_SUMMARY_SENTENCES_PER_PARAGRAPH = 3
+_TITLE_MINOR_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "but",
+        "by",
+        "for",
+        "from",
+        "in",
+        "nor",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "up",
+        "via",
+        "with",
+    }
+)
+
+
+@dataclass(frozen=True)
+class BriefMetric:
+    label: str
+    value: str
+
+
+@dataclass(frozen=True)
+class BriefFinding:
+    title: str
+    claim: str
+    evidence_points: list[str] = field(default_factory=list)
+    implication: str = ""
+    confidence: str = "directional"
+
+
+@dataclass(frozen=True)
+class BriefRecommendation:
+    action: str
+    owner: str = ""
+    expected_impact: str = ""
+    key_risk: str = ""
+
+
+@dataclass(frozen=True)
+class BriefDocument:
+    brief_id: str
+    title: str
+    subtitle: str
+    organization: str
+    publication_label: str
+    header_label: str
+    date_label: str
+    governing_question: str
+    governing_insight: str
+    executive_summary: list[str] = field(default_factory=list)
+    metrics: list[BriefMetric] = field(default_factory=list)
+    findings: list[BriefFinding] = field(default_factory=list)
+    decision_implications: list[str] = field(default_factory=list)
+    recommendations: list[BriefRecommendation] = field(default_factory=list)
+    methodology: list[str] = field(default_factory=list)
+    limitations: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+
+
+@lru_cache(maxsize=1)
+def _get_template_environment() -> Environment:
+    templates_dir = Path(__file__).resolve().parents[2] / "templates"
+    return Environment(
+        loader=FileSystemLoader(str(templates_dir)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
 
 
 def build_executive_brief_html(result: dict[str, Any]) -> str:
     """Render a saved query or roundtable result as executive-brief HTML."""
-    component = ExecutiveBriefingComponent(
-        plugin=StrategicAnalysisPlugin(
-            organization=_ORGANIZATION,
-            header_label=_HEADER_LABEL,
-            publication_label=_PUBLICATION_LABEL,
-        )
-    )
-    return component.render_html(_build_brief_payload(result))
+    template = _get_template_environment().get_template("brief.html")
+    return template.render(brief=_build_brief_payload(result))
 
 
-def _build_brief_payload(result: dict[str, Any]) -> EvidencePackage | ExecutiveBrief:
+def build_executive_brief_markdown(result: dict[str, Any]) -> str:
+    """Render a saved query or roundtable result as report markdown."""
+    return _render_brief_markdown(_build_brief_payload(result))
+
+
+def _build_brief_payload(result: dict[str, Any]) -> BriefDocument:
     if result.get("result_type") == "roundtable":
         return _build_roundtable_brief(result)
     return _build_query_evidence(result)
 
 
-def _build_query_evidence(result: dict[str, Any]) -> EvidencePackage:
+def _build_query_evidence(result: dict[str, Any]) -> BriefDocument:
     responses = result.get("responses", [])
     successful = [item for item in responses if item.get("response")]
     failures = [item for item in responses if item.get("error")]
@@ -60,36 +133,37 @@ def _build_query_evidence(result: dict[str, Any]) -> EvidencePackage:
         _extract_summary(item.get("response", "")) for item in successful
     )
     if not governing_insight:
-        governing_insight = "No successful advisor responses were available for synthesis."
+        governing_insight = (
+            "No successful advisor responses were available for synthesis."
+        )
 
-    observations = [
-        EvidenceObservation(
+    findings = [
+        BriefFinding(
             title=item.get("label", item.get("role", "Advisor")),
-            summary=_extract_summary(item.get("response", "")),
+            claim=_extract_summary(item.get("response", "")),
             evidence_points=_extract_evidence_points(item.get("response", "")),
-            significance=(
+            implication=(
                 f"Use the {item.get('label', item.get('role', 'advisor'))} perspective "
                 "to pressure-test the final recommendation."
             ),
             confidence="directional",
-            source_refs=[item.get("role", "")],
         )
         for item in successful
         if _extract_summary(item.get("response", ""))
     ]
 
     if failures:
-        observations.append(
-            EvidenceObservation(
+        findings.append(
+            BriefFinding(
                 title="Delivery gaps",
-                summary=(
+                claim=(
                     f"{len(failures)} advisor response(s) failed and were excluded from the brief."
                 ),
                 evidence_points=[
                     f"{item.get('label', item.get('role', 'Advisor'))}: {item.get('error', 'Unknown error')}"
                     for item in failures[:3]
                 ],
-                significance=(
+                implication=(
                     "Rerun the query or inspect logs before treating the synthesis as complete."
                 ),
                 confidence="low",
@@ -97,30 +171,45 @@ def _build_query_evidence(result: dict[str, Any]) -> EvidencePackage:
         )
 
     query = result.get("query", "Agricultural advisory query")
-    return EvidencePackage(
-        package_id=result.get("id", ""),
-        subject=query,
+    headline, remainder_paragraphs = _extract_headline_and_body(governing_insight)
+    display_insight = headline or governing_insight
+    composed_summary = _compose_executive_summary(
+        display_insight, remainder_paragraphs, [], original_insight=governing_insight
+    )
+    if not composed_summary:
+        composed_summary = [display_insight] if display_insight else []
+    return BriefDocument(
+        brief_id=result.get("id", ""),
+        title=_title_case_query(query),
+        subtitle="Expert Query Synthesis",
+        organization=_ORGANIZATION,
+        publication_label=_PUBLICATION_LABEL,
+        header_label=_HEADER_LABEL,
+        date_label=_format_timestamp(result.get("timestamp")),
         governing_question=query,
-        governing_insight=governing_insight,
-        summary_metrics=_compact_metrics(
+        governing_insight=display_insight,
+        executive_summary=composed_summary,
+        metrics=_compact_metrics(
             [
-                EvidenceMetric(
+                BriefMetric(
                     label="Experts Consulted",
                     value=str(len(result.get("experts", []))),
                 ),
-                EvidenceMetric(
+                BriefMetric(
                     label="Successful Responses",
                     value=str(len(successful)),
                 ),
-                EvidenceMetric(
-                    label="Failed Responses",
-                    value=str(len(failures)),
-                )
-                if failures
-                else None,
+                (
+                    BriefMetric(
+                        label="Failed Responses",
+                        value=str(len(failures)),
+                    )
+                    if failures
+                    else None
+                ),
             ]
         ),
-        observations=observations,
+        findings=findings,
         methodology=[
             "Built from saved expert responses in AI Agriculture Advisors.",
             "Rendered into a decision-ready brief without re-querying the LLM providers.",
@@ -129,24 +218,26 @@ def _build_query_evidence(result: dict[str, Any]) -> EvidencePackage:
             "This brief is a structural synthesis of stored advisor outputs.",
             "Conflicting expert recommendations still require user judgment.",
         ],
-        sources=[
-            item.get("label", item.get("role", "Advisor"))
-            for item in successful
-        ],
-        metadata=_build_metadata(
-            result,
-            subtitle="Expert Query Synthesis",
-            headline=governing_insight,
-        ),
+        sources=[item.get("label", item.get("role", "Advisor")) for item in successful],
     )
 
 
-def _build_roundtable_brief(result: dict[str, Any]) -> ExecutiveBrief:
+def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
     transcript = result.get("transcript", [])
+    structured_consensus = result.get("consensus_brief")
+    if isinstance(structured_consensus, dict) and structured_consensus:
+        return _build_roundtable_brief_from_structured(
+            result,
+            transcript,
+            structured_consensus,
+        )
+
+    # Legacy fallback for older saved results that only contain free-form consensus text.
     final_answer = str(result.get("final_answer", "")).strip() or (
         "No consensus answer was available from the saved roundtable."
     )
-    intro, sections = _parse_markdown_sections(final_answer)
+    normalized_final_answer = _collapse_duplicate_consensus_sections(final_answer)
+    intro, sections = _parse_markdown_sections(normalized_final_answer)
     agreement_lines = sections.get("key points of agreement", [])
     perspective_lines = sections.get("important differences in perspective", [])
     conclusions_lines = sections.get("actionable conclusions", [])
@@ -158,14 +249,24 @@ def _build_roundtable_brief(result: dict[str, Any]) -> ExecutiveBrief:
     recommendations, bottom_line = _build_recommendations_from_conclusions(
         conclusions_lines
     )
+    inline_title, inline_rows = _parse_inline_consensus_matrix(normalized_final_answer)
+    if inline_title:
+        intro = inline_title
+    if inline_rows:
+        if not key_findings:
+            key_findings = _build_key_findings_from_consensus_matrix(inline_rows)
+        if not decision_implications:
+            decision_implications = _build_decision_implications_from_consensus_matrix(
+                inline_rows
+            )
+        if not recommendations:
+            recommendations = _build_recommendations_from_consensus_matrix(inline_rows)
 
     governing_insight = (
         bottom_line
-        or _first_non_empty(
-            finding.claim for finding in key_findings
-        )
         or intro
-        or _clean_markdown_text(final_answer)
+        or _first_non_empty(finding.claim for finding in key_findings)
+        or _clean_markdown_text(normalized_final_answer)
     )
 
     executive_summary = [item for item in [intro, bottom_line] if item]
@@ -173,7 +274,7 @@ def _build_roundtable_brief(result: dict[str, Any]) -> ExecutiveBrief:
         executive_summary = [governing_insight]
 
     if not key_findings:
-        fallback_summary = _extract_summary(final_answer)
+        fallback_summary = _extract_summary(normalized_final_answer)
         if fallback_summary:
             key_findings = [
                 BriefFinding(
@@ -211,27 +312,41 @@ def _build_roundtable_brief(result: dict[str, Any]) -> ExecutiveBrief:
         ]
     ) or [str(expert) for expert in result.get("experts", []) if str(expert).strip()]
 
+    headline, remainder_paragraphs = _extract_headline_and_body(governing_insight)
+    display_insight = headline or governing_insight
+    composed_summary = _compose_executive_summary(
+        display_insight,
+        remainder_paragraphs,
+        executive_summary,
+        original_insight=governing_insight,
+    )
+    if not composed_summary:
+        composed_summary = executive_summary or (
+            [display_insight] if display_insight else []
+        )
+
     query = result.get("query", "Agricultural advisory roundtable")
-    return ExecutiveBrief(
+    return BriefDocument(
         brief_id=result.get("id", ""),
-        title=query,
+        title=_title_case_query(query),
         subtitle="Roundtable Consensus",
-        kicker=_HEADER_LABEL,
         organization=_ORGANIZATION,
         publication_label=_PUBLICATION_LABEL,
+        header_label=_HEADER_LABEL,
         date_label=_format_timestamp(result.get("timestamp")),
-        headline=governing_insight,
         governing_question=query,
-        governing_insight=governing_insight,
-        executive_summary=executive_summary,
-        top_metrics=_compact_metrics(
+        governing_insight=display_insight,
+        executive_summary=composed_summary,
+        metrics=_compact_metrics(
             [
-                EvidenceMetric(label="Participants", value=str(len(result.get("experts", [])))),
-                EvidenceMetric(label="Rounds", value=str(result.get("rounds", 0))),
-                EvidenceMetric(label="Contributions", value=str(len(transcript))),
+                BriefMetric(
+                    label="Participants", value=str(len(result.get("experts", [])))
+                ),
+                BriefMetric(label="Rounds", value=str(result.get("rounds", 0))),
+                BriefMetric(label="Contributions", value=str(len(transcript))),
             ]
         ),
-        key_findings=key_findings,
+        findings=key_findings,
         decision_implications=decision_implications,
         recommendations=recommendations,
         methodology=[
@@ -243,19 +358,111 @@ def _build_roundtable_brief(result: dict[str, Any]) -> ExecutiveBrief:
     )
 
 
-def _build_metadata(
+def _build_roundtable_brief_from_structured(
     result: dict[str, Any],
-    *,
-    subtitle: str,
-    headline: str,
-) -> list[BriefMetadataItem]:
-    return [
-        BriefMetadataItem(label="organization", value=_ORGANIZATION),
-        BriefMetadataItem(label="publication", value=_PUBLICATION_LABEL),
-        BriefMetadataItem(label="date", value=_format_timestamp(result.get("timestamp"))),
-        BriefMetadataItem(label="subtitle", value=subtitle),
-        BriefMetadataItem(label="headline", value=headline),
+    transcript: list[dict[str, Any]],
+    consensus_brief: dict[str, Any],
+) -> BriefDocument:
+    governing_insight = str(consensus_brief.get("governing_insight", "")).strip()
+    executive_summary = _clean_string_list(consensus_brief.get("executive_summary", []))
+    findings = [
+        BriefFinding(
+            title=str(item.get("title", "")).strip() or "Consensus finding",
+            claim=str(item.get("claim", "")).strip() or governing_insight,
+            evidence_points=_clean_string_list(item.get("evidence_points", [])),
+            implication=str(item.get("implication", "")).strip(),
+            confidence="directional",
+        )
+        for item in consensus_brief.get("key_findings", [])
+        if isinstance(item, dict)
     ]
+    recommendations = [
+        BriefRecommendation(
+            owner=str(item.get("owner", "")).strip(),
+            action=str(item.get("action", "")).strip(),
+            expected_impact=str(item.get("expected_impact", "")).strip(),
+            key_risk=str(item.get("key_risk", "")).strip(),
+        )
+        for item in consensus_brief.get("recommendations", [])
+        if isinstance(item, dict) and str(item.get("action", "")).strip()
+    ]
+    limitations = [
+        "Built from a saved multi-expert roundtable consensus without re-running the discussion.",
+    ]
+    limitations.extend(_clean_string_list(consensus_brief.get("limitations", [])))
+    error_entries = [
+        entry for entry in transcript if str(entry.get("text", "")).startswith("Error:")
+    ]
+    if error_entries:
+        affected_speakers = _dedupe_preserve_order(
+            [
+                str(entry.get("speaker", "Advisor")).strip() or "Advisor"
+                for entry in error_entries
+            ]
+        )
+        limitations.append(
+            f"{len(error_entries)} participant contribution(s) failed during the saved roundtable."
+        )
+        limitations.append(
+            f"Affected participants: {', '.join(affected_speakers[:4])}."
+        )
+
+    sources = _dedupe_preserve_order(
+        [
+            str(entry.get("speaker", "")).strip()
+            for entry in transcript
+            if str(entry.get("speaker", "")).strip()
+        ]
+    ) or [str(expert) for expert in result.get("experts", []) if str(expert).strip()]
+
+    # Split over-long insights into a readable headline + body, and dedupe against the
+    # executive_summary field (LLMs frequently dump the same blob into both).
+    headline, remainder_paragraphs = _extract_headline_and_body(governing_insight)
+    display_governing_insight = (
+        headline
+        or _first_non_empty(executive_summary)
+        or "No consensus answer was available from the saved roundtable."
+    )
+    composed_summary = _compose_executive_summary(
+        display_governing_insight,
+        remainder_paragraphs,
+        executive_summary,
+        original_insight=governing_insight,
+    )
+
+    query = result.get("query", "Agricultural advisory roundtable")
+    return BriefDocument(
+        brief_id=result.get("id", ""),
+        title=_title_case_query(query),
+        subtitle="Roundtable Consensus",
+        organization=_ORGANIZATION,
+        publication_label=_PUBLICATION_LABEL,
+        header_label=_HEADER_LABEL,
+        date_label=_format_timestamp(result.get("timestamp")),
+        governing_question=query,
+        governing_insight=display_governing_insight,
+        executive_summary=composed_summary,
+        metrics=_compact_metrics(
+            [
+                BriefMetric(
+                    label="Participants", value=str(len(result.get("experts", [])))
+                ),
+                BriefMetric(label="Rounds", value=str(result.get("rounds", 0))),
+                BriefMetric(label="Contributions", value=str(len(transcript))),
+            ]
+        ),
+        findings=findings,
+        decision_implications=_clean_string_list(
+            consensus_brief.get("decision_implications", [])
+        ),
+        recommendations=recommendations,
+        methodology=[
+            "Built from a saved multi-expert roundtable transcript.",
+            "Consensus sections came from the structured moderator synthesis stored with the result.",
+        ],
+        limitations=limitations,
+        sources=sources,
+    )
 
 
 def _build_key_findings_from_agreements(lines: list[str]) -> list[BriefFinding]:
@@ -310,7 +517,10 @@ def _build_recommendations_from_conclusions(
             continue
 
         bottom_match = _BOLD_PREFIX_RE.match(stripped)
-        if bottom_match and _clean_markdown_line(bottom_match.group(1)).lower() == "bottom line":
+        if (
+            bottom_match
+            and _clean_markdown_line(bottom_match.group(1)).lower() == "bottom line"
+        ):
             bottom_line = _clean_markdown_line(bottom_match.group(2))
             index += 1
             continue
@@ -331,6 +541,70 @@ def _build_recommendations_from_conclusions(
     return recommendations, bottom_line
 
 
+def _build_key_findings_from_consensus_matrix(
+    rows: list[dict[str, str]],
+) -> list[BriefFinding]:
+    findings: list[BriefFinding] = []
+    for row in rows:
+        title = row.get("Investment Area", "")
+        rationale_points = _extract_cell_points(
+            row.get("Why It Is Smart for Summer 2026", "")
+        )
+        enabler_points = _extract_cell_points(
+            row.get("Key Enablers / Risk-Mitigations", "")
+        )
+        claim = rationale_points[0] if rationale_points else title
+        evidence_points = rationale_points[1:]
+        implication = _join_cell_points(enabler_points)
+        findings.append(
+            BriefFinding(
+                title=title or "Consensus finding",
+                claim=claim,
+                evidence_points=evidence_points,
+                implication=implication,
+                confidence="directional",
+            )
+        )
+    return findings
+
+
+def _build_decision_implications_from_consensus_matrix(
+    rows: list[dict[str, str]],
+) -> list[str]:
+    implications: list[str] = []
+    for row in rows:
+        area = row.get("Investment Area", "")
+        enablers = _join_cell_points(
+            _extract_cell_points(row.get("Key Enablers / Risk-Mitigations", ""))
+        )
+        if not enablers:
+            continue
+        implications.append(f"{area}: {enablers}" if area else enablers)
+    return implications
+
+
+def _build_recommendations_from_consensus_matrix(
+    rows: list[dict[str, str]],
+) -> list[BriefRecommendation]:
+    recommendations: list[BriefRecommendation] = []
+    for row in rows:
+        action = _join_cell_points(
+            _extract_cell_points(row.get("What to Do (2025-2026)", ""))
+        )
+        if not action:
+            continue
+        recommendations.append(
+            BriefRecommendation(
+                action=action,
+                owner=row.get("Investment Area", ""),
+                expected_impact=_join_cell_points(
+                    _extract_cell_points(row.get("Why It Is Smart for Summer 2026", ""))
+                ),
+            )
+        )
+    return recommendations
+
+
 def _parse_markdown_sections(text: str) -> tuple[str, dict[str, list[str]]]:
     intro_lines: list[str] = []
     current_heading = ""
@@ -343,7 +617,9 @@ def _parse_markdown_sections(text: str) -> tuple[str, dict[str, list[str]]]:
         if heading_match:
             if current_heading:
                 sections[current_heading] = current_lines
-            current_heading = _normalize_heading_key(_clean_markdown_line(heading_match.group(1)))
+            current_heading = _normalize_heading_key(
+                _clean_markdown_line(heading_match.group(1))
+            )
             current_lines = []
             continue
 
@@ -397,6 +673,323 @@ def _parse_markdown_table(lines: list[str]) -> list[dict[str, str]]:
 def _parse_markdown_table_row(line: str) -> list[str]:
     raw_cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
     return [_clean_markdown_line(cell) for cell in raw_cells]
+
+
+def _parse_inline_consensus_matrix(text: str) -> tuple[str, list[dict[str, str]]]:
+    # Legacy fallback for pre-structured roundtable summaries that flattened a matrix into
+    # a single prose block. New roundtables should use `consensus_brief` instead.
+    marker = "Investment Area |"
+    if marker not in text:
+        return "", []
+
+    prefix, _, remainder = str(text).partition(marker)
+    title = _extract_consensus_title(prefix)
+    raw_cells = [cell.strip() for cell in f"{marker}{remainder}".split("|")]
+    cells = [cell for cell in raw_cells if cell.strip()]
+    if len(cells) < 8:
+        return title, []
+
+    headers = [_clean_markdown_text(cell) for cell in cells[:4]]
+    if headers[0].lower() != "investment area":
+        return title, []
+
+    rows: list[dict[str, str]] = []
+    seen: set[tuple[str, ...]] = set()
+    row_cells = cells[4:]
+    for index in range(0, len(row_cells) - 3, 4):
+        chunk = row_cells[index : index + 4]
+        first_cell = _clean_cell_text(chunk[0])
+        if first_cell.lower().startswith("consensus answer"):
+            break
+
+        values: tuple[str, ...] = tuple(_clean_cell_text(cell) for cell in chunk)
+        if not values[0] or values in seen:
+            continue
+        seen.add(values)
+        rows.append(dict(zip(headers, values)))
+
+    return title, rows
+
+
+def _extract_consensus_title(text: str) -> str:
+    flattened = " ".join(str(text).split())
+    match = _CONSENSUS_TITLE_RE.search(flattened)
+    if match:
+        return _clean_markdown_line(match.group(1))
+    cleaned = _clean_markdown_text(text)
+    if cleaned.lower() in {"executive summary", "governing insight"}:
+        return ""
+    return cleaned
+
+
+def _collapse_duplicate_consensus_sections(text: str) -> str:
+    normalized = str(text).replace("\r\n", "\n").strip()
+    matches = list(_CONSENSUS_TITLE_RE.finditer(normalized))
+    if len(matches) < 2:
+        return normalized
+
+    first_start = matches[0].start()
+    second_start = matches[1].start()
+    first_block = normalized[first_start:second_start].strip()
+    second_block = normalized[second_start:].strip()
+    if _normalize_whitespace(first_block) != _normalize_whitespace(second_block):
+        return normalized
+
+    prefix = normalized[:first_start].strip()
+    if not prefix:
+        return first_block
+    return f"{prefix}\n{first_block}"
+
+
+def _normalize_whitespace(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def _clean_cell_text(text: str) -> str:
+    lines = [_clean_markdown_line(line) for line in str(text).splitlines()]
+    return "\n".join(line for line in lines if line).strip()
+
+
+def _extract_cell_points(text: str) -> list[str]:
+    points = [_clean_markdown_line(line) for line in str(text).splitlines()]
+    return [point for point in points if point]
+
+
+def _join_cell_points(points: list[str]) -> str:
+    cleaned = [point.strip() for point in points if point.strip()]
+    return "; ".join(cleaned)
+
+
+def _render_brief_markdown(brief: BriefDocument) -> str:
+    lines = [
+        f"# {brief.title}",
+        "",
+        f"*{brief.subtitle}*",
+        "",
+        f"**Organization:** {brief.organization}",
+    ]
+    if brief.date_label:
+        lines.append(f"**Date:** {brief.date_label}")
+    lines.extend(
+        [
+            "",
+            "## Governing Insight",
+            "",
+            brief.governing_insight,
+            "",
+        ]
+    )
+
+    if brief.executive_summary:
+        lines.extend(["## Executive Summary", ""])
+        for paragraph in brief.executive_summary:
+            lines.extend([paragraph, ""])
+
+    if brief.metrics:
+        lines.extend(["## Metrics", ""])
+        for metric in brief.metrics:
+            lines.append(f"- **{metric.label}:** {metric.value}")
+        lines.append("")
+
+    if brief.findings:
+        lines.extend(["## Key Findings", ""])
+        for finding in brief.findings:
+            lines.extend([f"### {finding.title}", "", finding.claim, ""])
+            for point in finding.evidence_points:
+                lines.append(f"- {point}")
+            if finding.implication:
+                lines.extend(["", f"**Implication:** {finding.implication}"])
+            lines.append("")
+
+    if brief.recommendations:
+        lines.extend(["## Recommendations", ""])
+        for recommendation in brief.recommendations:
+            lines.extend([f"### {recommendation.owner or 'Shared'}", ""])
+            lines.append(f"- **Action:** {recommendation.action}")
+            if recommendation.expected_impact:
+                lines.append(f"- **Expected Impact:** {recommendation.expected_impact}")
+            if recommendation.key_risk:
+                lines.append(f"- **Key Risk:** {recommendation.key_risk}")
+            lines.append("")
+
+    if brief.decision_implications:
+        lines.extend(["## Decision Implications", ""])
+        for implication in brief.decision_implications:
+            lines.append(f"- {implication}")
+        lines.append("")
+
+    if brief.methodology:
+        lines.extend(["## Methodology", ""])
+        for item in brief.methodology:
+            lines.append(f"- {item}")
+        lines.append("")
+
+    if brief.limitations:
+        lines.extend(["## Limitations", ""])
+        for item in brief.limitations:
+            lines.append(f"- {item}")
+        lines.append("")
+
+    if brief.sources:
+        lines.extend(["## Sources", ""])
+        for source in brief.sources:
+            lines.append(f"- {source}")
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+def _title_case_query(text: str) -> str:
+    """Title-case a user query for display as a brief title (AP-style minor words)."""
+    cleaned = text.strip()
+    if not cleaned:
+        return cleaned
+    words = cleaned.split()
+    last = len(words) - 1
+    result: list[str] = []
+    for index, word in enumerate(words):
+        core = word.strip("?!.,;:\"'()[]“”‘’")
+        if not core:
+            result.append(word)
+            continue
+        is_edge = index == 0 or index == last
+        is_minor = core.lower() in _TITLE_MINOR_WORDS
+        cased_core = (
+            core.lower()
+            if is_minor and not is_edge
+            else (core[0].upper() + core[1:].lower() if len(core) > 1 else core.upper())
+        )
+        result.append(word.replace(core, cased_core, 1))
+    return " ".join(result)
+
+
+def _split_into_sentences(text: str) -> list[str]:
+    cleaned = text.strip()
+    if not cleaned:
+        return []
+    return [
+        piece.strip() for piece in _SENTENCE_SPLIT_RE.split(cleaned) if piece.strip()
+    ]
+
+
+def _chunk_sentences_into_paragraphs(
+    sentences: list[str],
+    sentences_per_paragraph: int = _SUMMARY_SENTENCES_PER_PARAGRAPH,
+) -> list[str]:
+    paragraphs: list[str] = []
+    for start in range(0, len(sentences), sentences_per_paragraph):
+        chunk = " ".join(sentences[start : start + sentences_per_paragraph]).strip()
+        if chunk:
+            paragraphs.append(chunk)
+    return paragraphs
+
+
+def _break_long_text_into_paragraphs(
+    text: str,
+    sentences_per_paragraph: int = _SUMMARY_SENTENCES_PER_PARAGRAPH,
+) -> list[str]:
+    """Return the input as one paragraph per ~N sentences, preserving short text as-is."""
+    sentences = _split_into_sentences(text)
+    if len(sentences) <= sentences_per_paragraph:
+        return [text.strip()] if text.strip() else []
+    return _chunk_sentences_into_paragraphs(sentences, sentences_per_paragraph)
+
+
+def _extract_headline_and_body(
+    insight: str,
+    max_headline_chars: int = _HEADLINE_MAX_CHARS,
+) -> tuple[str, list[str]]:
+    """Split an over-long governing insight into a short headline plus body paragraphs."""
+    cleaned = insight.strip()
+    if not cleaned or len(cleaned) <= max_headline_chars:
+        return cleaned, []
+
+    sentences = _split_into_sentences(cleaned)
+    if len(sentences) <= 1:
+        return cleaned, []
+
+    headline_sentences: list[str] = []
+    headline_len = 0
+    for sentence in sentences:
+        if headline_sentences and headline_len + len(sentence) + 1 > max_headline_chars:
+            break
+        headline_sentences.append(sentence)
+        headline_len += len(sentence) + 1
+
+    headline = " ".join(headline_sentences).strip()
+    remainder = sentences[len(headline_sentences) :]
+    body_paragraphs = _chunk_sentences_into_paragraphs(remainder)
+    return headline, body_paragraphs
+
+
+def _compose_executive_summary(
+    headline: str,
+    remainder_paragraphs: list[str],
+    existing_summary: list[str],
+    original_insight: str = "",
+) -> list[str]:
+    """Combine extracted body with LLM-provided summary, deduping against the headline."""
+    headline_key = _normalize_whitespace(headline)
+    original_key = _normalize_whitespace(original_insight)
+    seen: set[str] = set()
+    if headline_key:
+        seen.add(headline_key)
+    if original_key:
+        seen.add(original_key)
+    paragraphs: list[str] = []
+
+    def _add(text: str) -> None:
+        key = _normalize_whitespace(text)
+        if not key or key in seen:
+            return
+        seen.add(key)
+        paragraphs.append(text)
+
+    for paragraph in remainder_paragraphs:
+        cleaned = (
+            paragraph.strip()
+            if isinstance(paragraph, str)
+            else _coerce_to_string(paragraph)
+        )
+        if cleaned:
+            _add(cleaned)
+
+    for entry in existing_summary:
+        cleaned = entry.strip() if isinstance(entry, str) else _coerce_to_string(entry)
+        if not cleaned:
+            continue
+        cleaned_key = _normalize_whitespace(cleaned)
+        if cleaned_key in seen:
+            continue
+        # If the entry restates the original insight wholesale, skip it entirely
+        # rather than letting its sentence-chunked version leak back in.
+        if original_key and cleaned_key == original_key:
+            continue
+        for chunk in _break_long_text_into_paragraphs(cleaned):
+            _add(chunk)
+
+    return paragraphs
+
+
+def _clean_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [text for item in value if (text := _coerce_to_string(item))]
+
+
+def _coerce_to_string(value: Any) -> str:
+    """Flatten schema-violating LLM payloads (dicts, nested lists) into readable strings."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        parts = [_coerce_to_string(item) for item in value.values()]
+        return " — ".join(part for part in parts if part)
+    if isinstance(value, (list, tuple)):
+        parts = [_coerce_to_string(item) for item in value]
+        return " ".join(part for part in parts if part)
+    return str(value).strip()
 
 
 def _split_labeled_text(text: str) -> tuple[str, str]:
@@ -517,7 +1110,9 @@ def _split_blocks(text: str) -> list[list[str]]:
 
 
 def _block_to_point(block: list[str]) -> str:
-    cleaned_lines = [_clean_markdown_line(line) for line in block if _clean_markdown_line(line)]
+    cleaned_lines = [
+        _clean_markdown_line(line) for line in block if _clean_markdown_line(line)
+    ]
     if not cleaned_lines:
         return ""
 
@@ -585,14 +1180,20 @@ def _looks_like_list_line(line: str) -> bool:
     stripped = line.strip()
     if not stripped:
         return False
-    return bool(_UNORDERED_PREFIX_RE.match(stripped) or _ORDERED_PREFIX_RE.match(stripped))
+    return bool(
+        _UNORDERED_PREFIX_RE.match(stripped) or _ORDERED_PREFIX_RE.match(stripped)
+    )
 
 
 def _looks_like_continuation_line(line: str) -> bool:
     stripped = line.strip()
     if not stripped:
         return False
-    if _looks_like_list_line(stripped) or _looks_like_heading(stripped) or _HORIZONTAL_RULE_RE.match(stripped):
+    if (
+        _looks_like_list_line(stripped)
+        or _looks_like_heading(stripped)
+        or _HORIZONTAL_RULE_RE.match(stripped)
+    ):
         return False
     return True
 
@@ -606,6 +1207,6 @@ def _first_non_empty(values: Any) -> str:
 
 
 def _compact_metrics(
-    metrics: list[EvidenceMetric | None],
-) -> list[EvidenceMetric]:
+    metrics: list[BriefMetric | None],
+) -> list[BriefMetric]:
     return [metric for metric in metrics if metric is not None]
