@@ -152,3 +152,111 @@ async def test_generate_no_api_key() -> None:
 
         with pytest.raises(ValueError, match="API key not configured"):
             await client.generate("Test prompt", "Test system prompt")
+
+
+POOL_ERROR = {
+    "error": {
+        "code": 429,
+        "message": "Provider returned error",
+        "metadata": {
+            "provider_name": "DekaLLM",
+            "limit_source": "upstream_provider_shared_pool",
+            "raw": "provider details that must not be displayed",
+        },
+    }
+}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_shared_pool_fails_over_once_to_same_model_json_mode():
+    client = LLMClient(
+        api_key="test",
+        api_url="https://openrouter.ai/api/v1/chat/completions",
+        model="original-model",
+    )
+    route = respx.post(client.api_url).mock(
+        side_effect=[
+            httpx.Response(429, json=POOL_ERROR),
+            httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": '{"answer":"Recovered"}'}}]},
+            ),
+        ]
+    )
+    schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
+    result = await client.generate_json(
+        "Original prompt", "Original instructions", schema_name="test", schema=schema
+    )
+    assert result == {"answer": "Recovered"}
+    assert route.call_count == 2
+    original, fallback = [json.loads(call.request.content) for call in route.calls]
+    assert original["response_format"]["type"] == "json_schema"
+    assert fallback["model"] == original["model"] == "original-model"
+    assert fallback["response_format"] == {"type": "json_object"}
+    assert fallback["provider"] == {
+        "ignore": ["dekallm"],
+        "allow_fallbacks": True,
+        "require_parameters": True,
+    }
+    assert fallback["messages"][1] == original["messages"][1]
+    assert fallback["messages"][0]["content"].startswith("Original instructions")
+    assert json.dumps(schema) in fallback["messages"][0]["content"]
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "source", [None, "openrouter_in_flight_budget", "openrouter_key_limit"]
+)
+async def test_other_limits_do_not_trigger_provider_failover(source):
+    client = LLMClient(
+        api_key="test",
+        api_url="https://openrouter.ai/api/v1/chat/completions",
+        model="original-model",
+    )
+    route = respx.post(client.api_url).mock(
+        return_value=httpx.Response(
+            429,
+            json={
+                "error": {
+                    "metadata": {"provider_name": "DekaLLM", "limit_source": source}
+                }
+            },
+        )
+    )
+    with pytest.raises(httpx.HTTPStatusError):
+        await client.generate_json("Prompt", "System", schema_name="test", schema={})
+    assert route.call_count == 1
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_shared_pool_failover_is_bounded_and_keeps_last_error():
+    client = LLMClient(
+        api_key="test",
+        api_url="https://openrouter.ai/api/v1/chat/completions",
+        model="original-model",
+    )
+    route = respx.post(client.api_url).mock(
+        return_value=httpx.Response(
+            429, json=POOL_ERROR, headers={"Retry-After": "120"}
+        )
+    )
+    with pytest.raises(httpx.HTTPStatusError) as caught:
+        await client.generate_json("Prompt", "System", schema_name="test", schema={})
+    assert route.call_count == 2
+    assert caught.value.response.headers["Retry-After"] == "120"
+    await client.close()
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_upstream_error_in_success_envelope_remains_rate_limit(client):
+    respx.post(client.api_url).mock(return_value=httpx.Response(200, json=POOL_ERROR))
+    with pytest.raises(httpx.HTTPStatusError) as caught:
+        await client.generate_json("Prompt", "System", schema_name="test", schema={})
+    assert caught.value.response.status_code == 429
+    assert caught.value.response.json() == POOL_ERROR

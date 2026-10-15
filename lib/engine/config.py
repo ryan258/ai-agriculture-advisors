@@ -1,4 +1,4 @@
-"""Configuration management for AI Agriculture Advisors."""
+"""Configuration management for AI Advisors."""
 
 import os
 from dataclasses import dataclass
@@ -17,6 +17,7 @@ class Settings:
     openrouter_model: str
     port: int
     allow_missing_api_key: bool
+    openrouter_synthesis_model: str = ""
 
     @staticmethod
     def _parse_bool(value: str) -> bool:
@@ -29,6 +30,9 @@ class Settings:
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
             openrouter_api_url=os.getenv("OPENROUTER_API_URL", ""),
             openrouter_model=os.getenv("OPENROUTER_MODEL", ""),
+            openrouter_synthesis_model=os.getenv(
+                "OPENROUTER_SYNTHESIS_MODEL", ""
+            ).strip(),
             port=int(os.getenv("PORT", "8123")),
             allow_missing_api_key=cls._parse_bool(
                 os.getenv("ALLOW_MISSING_API_KEY", "false")

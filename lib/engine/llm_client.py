@@ -3,6 +3,8 @@
 import json
 import httpx
 import logging
+import re
+from urllib.parse import urlsplit
 from functools import lru_cache
 from typing import Any, Optional
 
@@ -38,7 +40,9 @@ class LLMClient:
             await self._client.aclose()
             self._client = None
 
-    async def generate(self, prompt: str, system_prompt: str) -> str:
+    async def generate(
+        self, prompt: str, system_prompt: str, *, model: Optional[str] = None
+    ) -> str:
         """
         Generate a response from the LLM.
 
@@ -59,11 +63,11 @@ class LLMClient:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/ai-agriculture-advisors",
+            "HTTP-Referer": "http://localhost:8123",
         }
 
         payload = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
@@ -83,7 +87,7 @@ class LLMClient:
             if "choices" not in data or not data["choices"]:
                 raise ValueError("No choices in API response")
 
-            return data["choices"][0]["message"]["content"]
+            return str(data["choices"][0]["message"]["content"])
 
         except httpx.HTTPStatusError as e:
             logger.error(f"OpenRouter API error: {e.response.status_code}")
@@ -103,19 +107,20 @@ class LLMClient:
         schema_name: str,
         schema: dict[str, Any],
         strict: bool = True,
+        model: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Generate a structured JSON response using a JSON schema."""
+        """Generate structured JSON, optionally using a task-specific model."""
         if not self.api_key:
             raise ValueError("OpenRouter API key not configured")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/ai-agriculture-advisors",
+            "HTTP-Referer": "http://localhost:8123",
         }
 
         payload = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
@@ -137,8 +142,53 @@ class LLMClient:
                 headers=headers,
                 json=payload,
             )
+            # Strict schemas can leave only one eligible upstream provider. A
+            # confirmed shared-pool 429 permits ONE same-model JSON-mode attempt
+            # through another provider; account/key limits must never trigger it.
+            metadata = provider_error_metadata(response)
+            provider_name = metadata.get("provider_name", "")
+            if (
+                response.status_code == 429
+                and urlsplit(self.api_url).hostname == "openrouter.ai"
+                and metadata.get("limit_source") == "upstream_provider_shared_pool"
+                and isinstance(provider_name, str)
+                and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", provider_name)
+            ):
+                logger.warning(
+                    "Structured provider shared pool exhausted; trying same-model JSON mode"
+                )
+                payload["provider"] = {
+                    "ignore": [provider_name.lower()],
+                    "allow_fallbacks": True,
+                    "require_parameters": True,
+                }
+                payload["response_format"] = {"type": "json_object"}
+                payload["messages"] = [
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                        + "\nReturn only a JSON object conforming to this schema:\n"
+                        + json.dumps(schema),
+                    },
+                    {"role": "user", "content": prompt},
+                ]
+                response = await client.post(
+                    self.api_url, headers=headers, json=payload
+                )
             response.raise_for_status()
             data = response.json()
+            # OpenRouter may report an upstream failure in a successful HTTP
+            # envelope. Preserve its status/metadata instead of calling it bad JSON.
+            if isinstance(data.get("error"), dict):
+                code = data["error"].get("code")
+                status = code if type(code) is int and 400 <= code <= 599 else 502
+                failure = httpx.Response(
+                    status,
+                    headers=response.headers,
+                    json=data,
+                    request=response.request,
+                )
+                failure.raise_for_status()
 
             if "choices" not in data or not data["choices"]:
                 raise ValueError("No choices in API response")
@@ -148,9 +198,7 @@ class LLMClient:
                 return content
             if isinstance(content, list):
                 content = "".join(
-                    item.get("text", "")
-                    for item in content
-                    if isinstance(item, dict)
+                    item.get("text", "") for item in content if isinstance(item, dict)
                 )
             if not isinstance(content, str) or not content.strip():
                 raise ValueError("No JSON content in API response")
@@ -174,3 +222,14 @@ class LLMClient:
 def get_llm_client() -> LLMClient:
     """Return a cached LLM client instance."""
     return LLMClient()
+
+
+def provider_error_metadata(response: httpx.Response) -> dict[str, Any]:
+    """Read structured error metadata without exposing raw provider payloads."""
+    try:
+        data = response.json()
+    except ValueError:
+        return {}
+    error = data.get("error") if isinstance(data, dict) else None
+    metadata = error.get("metadata") if isinstance(error, dict) else None
+    return metadata if isinstance(metadata, dict) else {}
