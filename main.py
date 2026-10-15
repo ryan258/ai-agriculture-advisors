@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="AI Advisors",
     description="Configurable AI advisor panels powered by LLMs",
-    version="2.0.0",
+    version="2.1.0",
     lifespan=lifespan,
 )
 
@@ -228,7 +228,9 @@ async def roundtable(
     try:
         advisor_context = build_advisor_context(panel_id, roles)
         rounds = _normalize_rounds(rounds)
-        result = await run_roundtable(query, roles, rounds)
+        result = await run_roundtable(
+            query, roles, rounds, advisor_context=advisor_context
+        )
         view = roundtable_view(
             {
                 **result,

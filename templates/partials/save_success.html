@@ -1,6 +1,6 @@
-<div class="responses-header">
-    <h2>{% if result_type == 'roundtable' %}Roundtable Discussion{% else %}Expert Responses{% endif %}</h2>
-    <div class="query-display">
+<div class="{% if result_type == 'roundtable' %}roundtable-header{% else %}responses-header{% endif %}">
+    <h2 id="{% if result_type == 'roundtable' %}roundtable-title{% else %}responses-title{% endif %}">{% if result_type == 'roundtable' %}Roundtable Discussion{% else %}Expert Responses{% endif %}</h2>
+    <div class="query-display" aria-label="Current query">
         <strong>Query:</strong> {{ query }}
     </div>
     {% if result_type == 'roundtable' %}
@@ -9,10 +9,6 @@
         <span class="meta-item"><strong>Participants:</strong> {{ num_experts }}</span>
     </div>
     {% endif %}
-    <div class="response-actions">
-        <span class="save-status success">Saved</span>
-        <a href="/export/{{ result_id }}/brief" class="btn outline" target="_blank" rel="noopener">Open Executive Brief</a>
-        <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
-    </div>
+    {% include "partials/saved_actions.html" %}
 </div>
 <script>htmx.trigger(document.body, 'resultSaved');</script>

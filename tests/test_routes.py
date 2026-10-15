@@ -165,7 +165,12 @@ def test_roundtable_success(mock_roundtable: AsyncMock, client: TestClient) -> N
     assert "Roundtable Discussion" in response.text
     assert "Consensus" in response.text
     mock_roundtable.assert_awaited_once_with(
-        "Test query", ["agriculture", "climate"], 2
+        "Test query",
+        ["agriculture", "climate"],
+        2,
+        advisor_context=build_advisor_context(
+            "agriculture", ["agriculture", "climate"]
+        ),
     )
 
 
@@ -202,7 +207,12 @@ def test_roundtable_clamps_rounds_to_supported_bounds(
 
     assert response.status_code == 200
     mock_roundtable.assert_awaited_once_with(
-        "Test query", ["agriculture", "climate"], expected_rounds
+        "Test query",
+        ["agriculture", "climate"],
+        expected_rounds,
+        advisor_context=build_advisor_context(
+            "agriculture", ["agriculture", "climate"]
+        ),
     )
 
 
@@ -465,6 +475,78 @@ def test_save_roundtable_result_success(client: TestClient) -> None:
         result_type="roundtable",
         roundtable_data=roundtable_data,
     )
+
+
+@pytest.mark.parametrize(
+    ("result_type", "header_class", "title_id"),
+    [
+        ("query", "responses-header", "responses-title"),
+        ("roundtable", "roundtable-header", "roundtable-title"),
+    ],
+)
+def test_save_and_replay_keep_named_header_and_both_exports(
+    client: TestClient, result_type: str, header_class: str, title_id: str
+) -> None:
+    csrf_token = _get_csrf_token(client)
+    result_id = "controls123"
+    query = "A fictional saved-result controls check."
+    roles = (
+        ["agriculture", "climate"] if result_type == "roundtable" else ["agriculture"]
+    )
+    responses = [
+        {
+            "role": "agriculture",
+            "label": "Agricultural Science Expert",
+            "response": "Preserved answer.",
+        }
+    ]
+    roundtable = {
+        "roles": roles,
+        "rounds": 1,
+        "transcript": [
+            {
+                "role": role,
+                "speaker": role,
+                "round": 1,
+                "status": "success",
+                "text": "Preserved answer.",
+            }
+            for role in roles
+        ],
+        "final_answer": "Preserved synthesis.",
+    }
+    record = {
+        "id": result_id,
+        "query": query,
+        "result_type": result_type,
+        "experts": roles,
+        "responses": responses if result_type == "query" else [],
+        **(roundtable if result_type == "roundtable" else {}),
+    }
+    payload = {"query": query, "result_type": result_type, "csrf_token": csrf_token}
+    if result_type == "roundtable":
+        payload["roundtable_data"] = json.dumps(roundtable)
+    else:
+        payload["responses"] = json.dumps(responses)
+    with (
+        patch.object(main.history_store, "save_result", return_value=result_id) as save,
+        patch.object(main.history_store, "get_result_by_id", return_value=record),
+        patch("main.run_roundtable", new_callable=AsyncMock) as run,
+        patch("main.query_experts", new_callable=AsyncMock) as ask,
+    ):
+        saved = client.post("/save", data=payload)
+        reopened = client.get(f"/result/{result_id}")
+    assert saved.status_code == reopened.status_code == 200
+    for html in (saved.text, reopened.text):
+        assert f'<div class="{header_class}">' in html
+        assert f'<h2 id="{title_id}">' in html
+        assert f'href="/export/{result_id}/brief"' in html
+        assert f'href="/export/{result_id}"' in html
+    assert f'aria-labelledby="{title_id}"' in reopened.text
+    assert "Preserved answer." in reopened.text
+    save.assert_called_once()
+    run.assert_not_awaited()
+    ask.assert_not_awaited()
 
 
 @patch("main.query_experts")

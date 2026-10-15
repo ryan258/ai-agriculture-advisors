@@ -5,10 +5,7 @@
             <strong>Query:</strong> {{ query }}
         </div>
         {% if result_id %}
-        <div class="response-actions">
-            <span class="save-status success">Saved</span>
-            <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
-        </div>
+        {% include "partials/saved_actions.html" %}
         {% else %}
         <button class="btn outline save-btn"
                 hx-post="/save"
