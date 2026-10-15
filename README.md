@@ -1,234 +1,135 @@
-# AI Agriculture Advisors
+# AI Advisors
 
-A multi-expert agricultural advisory system powered by LLMs. Ten specialized AI advisors answer questions independently or debate them in roundtable discussions — all through a fast, accessible HTMX interface.
+A local tool for asking a question from several AI perspectives. Choose an advisor panel, get individual answers or a roundtable discussion, and save results for later reference.
 
-**v2.0.0** — FastAPI + Jinja2 + HTMX + ChromaDB. No React. No Docker. No user accounts. Just bare-metal Python.
+Built-in panels:
 
-## Features
+- **Agriculture:** the original ten advisors covering crops, climate, commodities, agricultural technology, supply chains, soil, pests, irrigation, organic farming, and farm economics.
+- **Software:** five advisors covering architecture, implementation, testing, security, and accessibility.
+- **AI Workflow & Delegation:** workflow design, bounded assignments, privacy, and recovery.
+- **Accessibility & Effort:** voice-first workflows, clear interactions, effort reduction, and resumption.
+- **Evidence & Judgment:** claims, source quality, alternative explanations, and uncertainty.
 
-### Ten Domain Experts
+FastAPI + Jinja2 + HTMX + ChromaDB, with plain JavaScript and the Candlelight dark theme. No frontend build step or user accounts.
 
-| Key | Expert | Covers |
-|-----|--------|--------|
-| `agriculture` | Agricultural Science Expert | Crop science, soil management, farming practices, genetic modifications |
-| `climate` | Climate Change Impact Analyst | Weather patterns, climate adaptation, regional impacts |
-| `commodities` | Commodities Trading Specialist | Market dynamics, supply/demand analysis, price forecasting |
-| `agritech` | AgriTech Innovation Researcher | AI, IoT, robotics, precision agriculture |
-| `supplychain` | Food Supply Chain Analyst | Distribution networks, sustainability, traceability |
-| `soil` | Soil Health Specialist | Soil composition, nutrient management, regenerative agriculture |
-| `pest` | Pest & Disease Management Expert | IPM, biological control, crop disease identification |
-| `irrigation` | Irrigation & Water Management Specialist | Water conservation, irrigation systems, efficiency |
-| `organic` | Organic Farming Consultant | Certification standards, non-GMO practices, holistic management |
-| `economics` | Agricultural Economics Advisor | Farm budgeting, risk assessment, financial planning |
+## Run locally
 
-### What You Can Do
+Requires Python 3.12+, uv, and an OpenRouter API key and model configured in `.env`.
 
-- **Multi-Expert Query** — Select any combination of experts and get independent parallel responses
-- **Roundtable Discussion** — Pick 2+ experts for a multi-round collaborative debate with a synthesized consensus (configurable 1-5 rounds)
-- **Save & Export** — Persist results to ChromaDB, export Markdown, or open a rendered executive brief for any saved result
-- **History** — Browse and reload previously saved results from the sidebar
-
-### What's Under the Hood
-
-- **Defensive routing** — Every route has try/except wrapping; errors degrade to styled partials, never raw tracebacks
-- **CSRF protection** — Double-submit cookie tokens validated on every POST
-- **Rate limiting** — slowapi guards on `/query` (30/min) and `/roundtable` (10/min)
-- **Accessibility** — Skip link, ARIA landmarks, focus-visible outlines, keyboard-navigable history, screen-reader-friendly status regions
-- **Candlelight theme** — Dark UI with consistent CSS variables, no build step
-
-## Quick Start
-
-### Prerequisites
-
-- **Python 3.12+**
-- **uv** — [install](https://docs.astral.sh/uv/getting-started/installation/)
-- **OpenRouter API key** — free at [openrouter.ai/keys](https://openrouter.ai/keys)
-
-### Setup
+From this checkout:
 
 ```bash
-git clone https://github.com/yourusername/ai-agriculture-advisors.git
-cd ai-agriculture-advisors
 uv sync
 cp .env.example .env
-# Edit .env — add your OPENROUTER_API_KEY
-```
-
-### Run
-
-```bash
+# Set OPENROUTER_API_KEY and OPENROUTER_MODEL in .env.
 ./start.sh
 ```
 
-Or directly:
+Open [localhost:8123](http://localhost:8123). The checkout directory can keep its existing `ai-agriculture-advisors` name; the application and Python project are named **AI Advisors**.
 
-```bash
-uv run uvicorn main:app --reload --port 8123
-```
+## Use
 
-Open [http://localhost:8123](http://localhost:8123).
+For a guided demonstration of all five panels, use the [AI Advisors demo walkthrough](docs/DEMO-WALKTHROUGH.md). Its scenarios show how to surface useful disagreement, decision-relevant unknowns, and a practical next check without treating AI agreement as proof.
 
-## Usage
+1. Choose a panel in the Advisor Panel selector.
+2. Select advisors and enter a question, or choose an example.
+3. Choose **Submit Query** for separate answers or **Round Table** for a discussion with at least two distinct advisors.
+4. Choose **Save Result**, then reopen it from Saved Results or export it as Markdown or an executive brief.
 
-1. Select one or more experts from the sidebar
-2. Type your agricultural question (or click a suggestion chip)
-3. Choose **Submit Query** for independent answers, or **Round Table** for a multi-round discussion (2+ experts required)
-4. **Save** results for persistent storage
-5. **Export** any saved result as Markdown or open the executive brief view
+The browser remembers the last panel and its advisor selections separately for each panel. Switching panels keeps the current question and displayed results. If browser storage is unavailable, panel selection still works for the current page.
 
-## Project Structure
+New results capture the panel name, advisor names, and the complete system prompts used. Expand **Advisor definitions used** to inspect them. Saved history and both export formats use those captured definitions even if the catalog changes later. Older results remain readable and explicitly say that their advisor definitions were not captured.
 
-```
-ai-agriculture-advisors/
-├── main.py                        # FastAPI routes (thin routing layer)
-├── lib/
-│   ├── engine/                    # LLM client + config
-│   │   ├── config.py
-│   │   └── llm_client.py
-│   ├── experts/                   # 10 domain experts
-│   │   ├── base.py                # Abstract Expert class
-│   │   ├── registry.py            # Expert lookup
-│   │   └── *.py                   # Individual expert modules
-│   ├── services/                  # Business logic
-│   │   ├── briefing_service.py    # Executive brief rendering from saved results
-│   │   ├── query_service.py       # Parallel expert queries
-│   │   └── roundtable_service.py  # Multi-round discussions
-│   ├── storage/                   # Persistence
-│   │   └── history_store.py       # ChromaDB integration
-│   └── utils/
-│       └── logger.py
-├── templates/                     # Jinja2 + HTMX
-│   ├── base.html
-│   ├── index.html
-│   ├── 404.html
-│   └── partials/                  # HTMX swap targets
-│       ├── error.html
-│       ├── responses.html
-│       ├── roundtable.html
-│       ├── response_card.html
-│       ├── save_success.html
-│       └── history_list.html
-├── static/css/style.css           # Candlelight dark theme
-├── tests/                         # pytest suite
-│   ├── test_routes.py
-│   ├── test_history_store.py
-│   ├── test_experts.py
-│   ├── test_services.py
-│   └── test_llm_client.py
-├── docs/architecture/             # Architectural contracts
-│   ├── boundaries.md
-│   ├── tech-stack.md
-│   ├── state.md
-│   ├── execution-context.md
-│   └── arch-decisions.md
-├── start.sh
-├── pyproject.toml
-└── .env.example
-```
+Advisors are AI personas using the configured model. Agreement between them does not establish independent verification. The moderator is instructed to preserve disagreements and missing evidence. These prompt instructions do not guarantee model behavior.
 
-### Architecture Rules
+The three decision-support panels ask each advisor to finish with a compact **Decision Check**:
 
-All business logic lives in `lib/`. `main.py` is a thin seam that maps HTTP to `lib/` calls and returns HTML. `lib/` never imports `main.py` or FastAPI. Every module in `lib/` passes the Arsenal Test — it can be dropped into a different project and used with zero changes. See `docs/architecture/` for the full contracts.
+1. **Recommended next step** — the smallest useful action.
+2. **Strongest objection** — the most important reason to question it.
+3. **What remains unknown** — the missing evidence or unresolved condition that matters.
+4. **What needs your decision** — one choice that belongs to you, or “No decision needed yet.”
 
-## Development
+Their roundtable moderator requests the same four points as structured data and renders them at the end of the synthesis. A missing or invalid closing object uses the existing plain-text fallback with the same instructions. Saved results retain the points, and exports include captured Decision Checks from structured roundtables or correctly formatted individual/fallback answers. No new advice is generated during export. Agriculture and Software keep their existing response formats.
 
-```bash
-uv run pytest          # Run tests (51 tests)
-uv run black .         # Format
-uv run mypy .          # Type check
-```
+The roundtable synthesis model can be set separately with `OPENROUTER_SYNTHESIS_MODEL`; advisor responses continue to use `OPENROUTER_MODEL`. This is useful when the synthesis model is temporarily unavailable or needs broader provider routing.
 
-### Adding a New Expert
+## Resume a partial roundtable
 
-1. Create `lib/experts/your_expert.py`:
+If a provider call fails, completed advisor answers stay visible. **Retry failed advisors & synthesis** requests only failed or unfinished contributions and then refreshes the synthesis. If all advisor answers completed, **Retry synthesis** requests only the synthesis. Recovery is manual except for one bounded synthesis failover described below.
 
-```python
-from .base import Expert
+A confirmed OpenRouter upstream shared-pool 429 during structured synthesis triggers one attempt through another provider of the same configured model. That attempt uses JSON mode with the original schema in the instructions because strict schema support can restrict routing to the saturated provider. Account/key limits do not trigger this failover. If it fails, further calls pause and a countdown uses the provider's retry guidance, with a 60-second default when none is supplied. The countdown is a minimum wait, not a guarantee that capacity will recover. Retry uses the original question, round order, and captured advisor prompts rather than the current sidebar selections. Successful contributions remain as written; they are not regenerated to incorporate a newly recovered earlier contribution. Synthesis uses successful contributions only and notes any gaps.
 
-class YourExpert(Expert):
-    @property
-    def role(self) -> str:
-        return "yourrole"
+You can save a partial result, reopen it, and retry later. Save again after retry to keep the revised result as a new saved version. Older saved failures are supported. Exports identify incomplete synthesis instead of presenting provider error text as advice.
 
-    @property
-    def label(self) -> str:
-        return "Your Expert Title"
+## Customize advisors and panels
 
-    @property
-    def system_prompt(self) -> str:
-        return """You are a [Role]. Your expertise covers..."""
-```
+Edit two plain JSON files and restart the application:
 
-2. Register in `lib/experts/registry.py`:
+- `lib/experts/definitions/advisors.json`: advisor definitions.
+- `lib/experts/definitions/panels.json`: panel membership, defaults, descriptions, and example questions.
 
-```python
-from .your_expert import YourExpert
+An advisor needs a stable, globally unique `role`, a `label`, a `system_prompt`, and `limitations`. The optional `response_format` can be `"compact_decision"` to request the shared Decision Check; omitting it keeps the original format:
 
-_your = YourExpert()
-
-expert_registry = {
-    # ... existing experts
-    "yourrole": _your,
+```json
+{
+  "role": "story_editor",
+  "label": "Story Editor",
+  "system_prompt": "Help examine structure, character choices, and pacing in the supplied draft.",
+  "limitations": "Use only the supplied material. State missing context and do not invent author intent."
 }
 ```
 
+A panel references existing roles, so a custom panel can combine advisors from different subjects:
+
+```json
+{
+  "id": "creative",
+  "label": "Creative",
+  "description": "Perspectives on writing and revision.",
+  "roles": ["story_editor"],
+  "default_roles": ["story_editor"],
+  "suggested_queries": [
+    {"label": "Review a draft", "query": "Help me find the structural problem in this draft."}
+  ]
+}
+```
+
+Append these objects to their respective JSON arrays. IDs begin with a lowercase letter and contain lowercase letters, digits, underscores, or hyphens. Keep IDs stable to make references understandable. Invalid or duplicate IDs, blank instructions, unknown panel members, and invalid defaults produce clear startup errors. A single-advisor panel supports individual answers; roundtables require at least two distinct advisors.
+
+The original agricultural role keys are preserved. The old prompt-only Python subclasses have been replaced by one configurable implementation; new advisors do not need Python code.
+
+## Project structure
+
+- `main.py`: HTTP routes and HTML responses.
+- `lib/experts/`: catalog validation, generic advisor implementation, and lookup.
+- `lib/engine/`: provider client and environment configuration.
+- `lib/services/`: individual queries, discussions, and brief rendering.
+- `lib/storage/`: ChromaDB history, retaining the existing `.chromadb` location and `query_history` collection.
+- `templates/` and `static/`: Jinja2, HTMX, plain JavaScript, and CSS.
+- `tests/`: focused behavioral checks.
+
+`lib/` does not import FastAPI or `main.py`.
+
 ## Configuration
 
-### Environment Variables
+| Variable | Purpose | Default |
+|---|---|---|
+| `OPENROUTER_API_KEY` | Provider API key | Required |
+| `OPENROUTER_API_URL` | Provider chat-completions endpoint | Set in `.env` |
+| `OPENROUTER_MODEL` | Model identifier | Set in `.env` |
+| `OPENROUTER_SYNTHESIS_MODEL` | Optional model used only for roundtable synthesis | `OPENROUTER_MODEL` |
+| `PORT` | Local server port | `8123` |
+| `CHROMADB_PATH` | Saved results directory | `.chromadb` |
+| `ALLOW_MISSING_API_KEY` | Allow startup without a key for local checks | `false` |
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENROUTER_API_KEY` | OpenRouter API key | *required* |
-| `OPENROUTER_API_URL` | OpenRouter endpoint | `https://openrouter.ai/api/v1/chat/completions` |
-| `OPENROUTER_MODEL` | LLM model | `mistralai/mistral-7b-instruct:free` |
-| `PORT` | Server port | `8123` |
-| `CHROMADB_PATH` | Persistence directory | `.chromadb` |
-| `ALLOW_MISSING_API_KEY` | Skip API key check (dev/test) | `false` |
+## Development checks
 
-### Models
+For panel, history, and rendering changes:
 
-Any model available on [OpenRouter](https://openrouter.ai/models) works. Some options:
+```bash
+uv run pytest -q tests/test_panels.py tests/test_experts.py tests/test_routes.py tests/test_services.py tests/test_history_store.py tests/test_briefing_service.py
+```
 
-- `mistralai/mistral-7b-instruct:free` (default, free)
-- `meta-llama/llama-3.1-8b-instruct:free` (free)
-- `google/gemini-flash-1.5`
-- `anthropic/claude-3-sonnet`
-- `openai/gpt-4-turbo`
+Provider calls are mocked in these tests. Browser, assistive technology, and live model behavior need their own checks.
 
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| `OPENROUTER_API_KEY environment variable is required` | Copy `.env.example` to `.env`, add your key, restart |
-| `Invalid CSRF token` | Refresh the page to regenerate the cookie |
-| API request failures | Verify key at [openrouter.ai/keys](https://openrouter.ai/keys), check credit balance, try a free model |
-| Rate limited (429) | `/query` allows 30/min, `/roundtable` allows 10/min — wait and retry |
-
-## Security
-
-- **CSRF** — Double-submit cookie token on every POST
-- **Rate limiting** — slowapi on LLM-facing endpoints
-- **Markdown sanitization** — DOMPurify on all rendered LLM output
-- **Input validation** — Server-side checks on every form submission
-- **Error containment** — Exceptions render styled partials, never raw tracebacks
-
-For production use, additionally consider HTTPS, authentication, and secrets management.
-
-## Documentation
-
-- `API.md` — Endpoint reference and CSRF requirements
-- `happy-path.md` — Quick-start walkthrough
-- `docs/architecture/` — Architectural contracts (boundaries, state, tech stack, execution context, decisions)
-
-## Acknowledgments
-
-- [OpenRouter](https://openrouter.ai/) — Unified LLM API access
-- [FastAPI](https://fastapi.tiangolo.com/) — Async Python web framework
-- [HTMX](https://htmx.org/) — HTML over the wire
-- [ChromaDB](https://www.trychroma.com/) — Vector database
-- [marked.js](https://marked.js.org/) — Markdown rendering
-- [DOMPurify](https://github.com/cure53/DOMPurify) — Sanitization
-
----
-
-**Built with care for sustainable agriculture.**
+See [API.md](API.md), [happy-path.md](happy-path.md), and `docs/architecture/` for request fields and architectural boundaries.

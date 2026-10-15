@@ -1,44 +1,39 @@
-# AI Agriculture Advisors — Roadmap
+# AI Advisors — Roadmap
 
-**Last Updated:** 2026-01-30  
+**Last Updated:** 2026-10-15  
 **Current Version:** 2.0.0  
-**Status:** Working MVP (FastAPI + Jinja2 + HTMX + ChromaDB)
+**Status:** Modular Monolith (FastAPI + Jinja2 + HTMX + ChromaDB)
 
 ---
 
-## Now (Tighten & Align)
-- **Error handling polish**: Standardize user-facing error messages and ensure server logs capture structured context.
-- **History management**: Decide whether to add delete/reset actions for saved results or explicitly document immutable history.
-- **Configuration clarity**: Add a single place to define rate limits, timeouts, and persistence paths (env + defaults).
+## Current Status & Capabilities
+
+**What works:**
+- **Multi-panel advisor catalog**: 5 built-in panels (Agriculture, Software, AI Workflow & Delegation, Accessibility & Effort, Evidence & Judgment) loaded dynamically from JSON definitions (`lib/experts/definitions/`).
+- **Parallel queries & discussions**: Multi-expert parallel execution (`/query`) and multi-turn roundtable deliberation (`/roundtable`) with selectable rounds (1–5).
+- **Practical decision support**: Shared 4-point Decision Check (`compact_decision`) providing concrete next steps, strongest objections, unknowns, and required user decisions across individual queries and roundtable syntheses.
+- **Roundtable recovery & retry**: Resilient resume flow (`/roundtable/retry`) preserving completed contributions, tracking provider rate limits with countdown timers, and providing bounded same-model JSON failover on OpenRouter shared pool exhaustion.
+- **Executive briefing service**: Rendered decision-ready HTML reports (`/export/{id}/brief`) and Markdown exports (`/export/{id}`) preserving captured advisor definitions and decision checks.
+- **Historical context preservation**: Saved history in ChromaDB captures and validates exact advisor system prompt snapshots at runtime, ensuring legacy results remain intact even if catalog prompts evolve.
+- **Defensive execution**: CSRF double-submit protection, edge rate limiting via slowapi, DOMPurify markdown sanitization, and structured error partials.
+- **133 passing automated tests**: Comprehensive unit, integration, route, service, and recovery test coverage with 100% mocked provider boundaries.
+
+---
+
+## Now (Immediate Priorities)
+- **Observability & telemetry**: Structured latency and provider cost/token metrics logging.
+- **History management**: Implement optional deletion/archive actions for saved ChromaDB entries.
+- **Response caching**: Cache identical query + role combinations to reduce redundant upstream calls.
 
 ---
 
 ## Next (Product Improvements)
-- **Streaming responses**: Add SSE support for `/query` and `/roundtable` to reduce perceived latency.
-- **Response caching**: Cache by normalized query + role set to avoid repeat LLM calls.
-- **Model selection UI**: Allow choosing OpenRouter models with cost/speed hints.
-- **Roundtable controls**: User-selectable rounds and summary style with guardrails on transcript length.
+- **Streaming responses**: SSE (Server-Sent Events) integration for real-time streaming of advisor responses and synthesis into HTMX targets.
+- **Dynamic model selection**: UI controls for selecting OpenRouter models with speed and pricing indicators.
+- **Panel customization validation CLI**: CLI command to lint and validate custom advisor and panel JSON files.
 
 ---
 
 ## Later (Platformization)
-- **Auth & quotas**: Optional API keys per user plus rate-limit headers for public exposure.
-- **Observability**: Request/LLM timing metrics and structured error codes.
-- **Persistence options**: Optional SQLite export for history or multi-tenant storage.
-
----
-
-## Current Stats
-
-**What works:**
-- Multi-expert `/query` and roundtable `/roundtable`
-- Persistent history with ChromaDB
-- Save/export flow (`/save`, `/export/{id}`, `/result/{id}`)
-- HTMX UI with sanitized markdown rendering
-- Rate limiting + CSRF protection
-- 37 passing tests
-
-**Gaps/risks:**
-- No streaming or caching yet
-- No auth or per-user quotas
-- History deletion not implemented
+- **Multi-tenant storage**: Optional SQLite or external database adapters for history persistence.
+- **Granular API auth**: Optional API key authentication and usage quotas for public deployment.

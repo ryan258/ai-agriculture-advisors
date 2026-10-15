@@ -27,5 +27,6 @@ logs/graphs/
 node_modules/
 
 # Misc
+.DS_Store
 agri-ai.txt
 logs/graphs/

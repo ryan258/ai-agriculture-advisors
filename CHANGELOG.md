@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — AI Advisors
+
+- Preserved successful roundtable contributions and added scoped retries for missing advisors and synthesis, including saved-result recovery.
+- Added a separate synthesis model setting and one same-model JSON-mode fallback for a confirmed OpenRouter upstream shared-pool limit, excluding the saturated provider. Other limits still pause calls and honor Retry-After; the countdown does not promise provider recovery.
+
+- Added AI Workflow & Delegation, Accessibility & Effort, and Evidence & Judgment, each with four advisors and practical examples.
+- Added a shared four-point Decision Check to those advisors and their roundtable syntheses, retaining captured closing points through saved results and exports.
+
+- Generalized the application into configurable advisor panels, retaining Agriculture and adding Software.
+- Replaced ten prompt-only subclasses with a validated JSON catalog and one advisor implementation.
+- Added panel-specific examples and remembered browser selections while preserving the current question on panel changes.
+- Captured advisor definitions with new saved results and included them in replay, Markdown, and HTML briefs; legacy results remain readable.
+- Generalized moderator prompts and instructed synthesis to preserve unresolved disagreements and unknowns.
+
+
 All notable changes to the AI Agriculture Advisors project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
