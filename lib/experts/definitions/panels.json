@@ -1,0 +1,153 @@
+[
+  {
+    "id": "agriculture",
+    "label": "Agriculture",
+    "description": "Crop science, farm practices, water, climate, and agricultural markets.",
+    "roles": [
+      "agriculture",
+      "climate",
+      "commodities",
+      "agritech",
+      "supplychain",
+      "soil",
+      "pest",
+      "irrigation",
+      "organic",
+      "economics"
+    ],
+    "default_roles": [
+      "agriculture"
+    ],
+    "suggested_queries": [
+      {
+        "label": "Yellowing tomatoes",
+        "query": "A small rain-fed tomato plot sits in heavy clay. After two weeks of wet weather, lower leaves are yellowing. I have not measured soil moisture or pH, and I have not confirmed pests. Compare drainage, nutrient, and pest explanations using only these facts. Give me three low-risk observations to make before changing inputs, and say what location or field evidence is needed before recommending a treatment."
+      },
+      {
+        "label": "Check irrigation first",
+        "query": "I want a drip schedule for a vegetable bed, but I only know the crop and approximate bed size. What measurements are essential before suggesting a schedule? Separate measurements I can take now from assumptions that would make a schedule unreliable."
+      },
+      {
+        "label": "Scout before treating",
+        "query": "I see new chewing damage on leaves but have not found an insect. Give me a short scouting sequence that could distinguish pest damage from weather or mechanical damage. Say what evidence would justify treatment and what local information is still needed; do not invent a pesticide rate or label direction."
+      }
+    ]
+  },
+  {
+    "id": "software",
+    "label": "Software",
+    "description": "Simple software design, implementation, testing, security, and accessibility.",
+    "roles": [
+      "software_architecture",
+      "software_implementation",
+      "software_testing",
+      "software_security",
+      "software_accessibility"
+    ],
+    "default_roles": [
+      "software_architecture",
+      "software_implementation"
+    ],
+    "suggested_queries": [
+      {
+        "label": "Resume one failed call",
+        "query": "In a single-user FastAPI tool, I want to save a partially completed roundtable and resume only the failed call. The existing database can store successful answers, but I have not shared the route or storage code. Propose the smallest useful change, the state that must be saved, and acceptance checks proving successful answers are not repeated. Identify what you cannot determine without seeing the code."
+      },
+      {
+        "label": "Keep the form recoverable",
+        "query": "A provider timeout currently replaces a submitted form with an error. Design the smallest change that keeps the question and completed answers visible while offering a retry. Cover keyboard access, status feedback, and the failure case where retry also fails."
+      },
+      {
+        "label": "Review exported data",
+        "query": "A local advisor tool exports prompts and AI responses as Markdown. Map what could be exposed in the prompt, export, and saved history. Separate facts from assumptions, and list the settings or code that must be checked before claiming the data is private."
+      }
+    ]
+  },
+  {
+    "id": "ai_workflow",
+    "label": "AI Workflow & Delegation",
+    "description": "Decide what to delegate to AI, what context to provide, and how to review and recover.",
+    "roles": [
+      "ai_workflow_workflow_designer",
+      "ai_workflow_delegation_planner",
+      "ai_workflow_privacy_reviewer",
+      "ai_workflow_recovery_reviewer"
+    ],
+    "default_roles": [
+      "ai_workflow_workflow_designer",
+      "ai_workflow_delegation_planner"
+    ],
+    "suggested_queries": [
+      {
+        "label": "Delegate release notes",
+        "query": "I want an AI coding agent to draft release notes from a diff I provide. It may return a draft file, but it must not commit, push, merge, or publish. Give me a compact task packet, a review checklist, a checkpoint that makes interruption safe, and the one decision I should keep for myself. Call out the risk that could make this trial cost more review time than it saves."
+      },
+      {
+        "label": "Bound a code change",
+        "query": "I want an AI agent to update one settings page in a local app. It may edit that page and its focused styles, but must not change authentication, data storage, or publish the app. Define the inputs, one reviewable deliverable, the acceptance check, and the exact stop condition if it discovers a wider dependency."
+      },
+      {
+        "label": "Resume after interruption",
+        "query": "I often stop work mid-task and return without the full conversation. Design a tiny handoff record for an AI coding task: what is done, current files, next action, open decision, and recovery command. Keep it short enough to dictate and say what should never be inferred from the note."
+      }
+    ]
+  },
+  {
+    "id": "accessibility_effort",
+    "label": "Accessibility & Effort",
+    "description": "Reduce input, handoffs, and effort across everyday tasks, with accessible ways to resume.",
+    "roles": [
+      "accessibility_effort_voice_workflow",
+      "accessibility_effort_interaction_reviewer",
+      "accessibility_effort_effort_reduction",
+      "accessibility_effort_fallback_planner"
+    ],
+    "default_roles": [
+      "accessibility_effort_voice_workflow",
+      "accessibility_effort_effort_reduction"
+    ],
+    "suggested_queries": [
+      {
+        "label": "Reduce repeated dictation",
+        "query": "I use dictation and short work sessions. A recurring task currently means re-entering the same background and remembering several steps. Redesign it around one reusable, voice-friendly starter, the fewest practical interactions, and a saved checkpoint I can resume after an interruption. Ask at most one essential question. Include a fallback if dictation fails and keep the final choice with me."
+      },
+      {
+        "label": "Make status easy to hear",
+        "query": "A long-running task can take several minutes and sometimes fails. Propose concise spoken and on-screen status messages for started, waiting, completed, and failed states. Make it clear what is saved and what action is available, without requiring the person to reread a long transcript."
+      },
+      {
+        "label": "Find the smallest effort cut",
+        "query": "A form requires repeating the same information across three steps. Suggest the smallest safe reduction in input. State what must persist if the person pauses, how they can correct an accidental selection, and what to test with keyboard and assistive technology."
+      }
+    ]
+  },
+  {
+    "id": "evidence_judgment",
+    "label": "Evidence & Judgment",
+    "description": "Examine claims, source quality, competing explanations, and uncertainty in supplied material.",
+    "roles": [
+      "evidence_judgment_claim_examiner",
+      "evidence_judgment_source_reviewer",
+      "evidence_judgment_alternative_explanations",
+      "evidence_judgment_uncertainty_reviewer"
+    ],
+    "default_roles": [
+      "evidence_judgment_claim_examiner",
+      "evidence_judgment_source_reviewer"
+    ],
+    "suggested_queries": [
+      {
+        "label": "Test the 50% claim",
+        "query": "A small AI coding pilot is said to cut review effort by 50% because its changes received fewer review comments. There is no human-only baseline, review time was not tracked, and the changes varied in size. Separate what the evidence supports from what it does not. Give one plausible alternative explanation and the smallest fair measurement that could change the conclusion. Do not treat agreement among AI advisors as evidence."
+      },
+      {
+        "label": "Compare explanations",
+        "query": "Two explanations fit the same short report. I will paste the report and both explanations. Identify which statements are directly supported, what each explanation assumes, one observation that would distinguish them, and what result would change your current view. Do not force a winner if the supplied evidence cannot decide."
+      },
+      {
+        "label": "Check a source-backed answer",
+        "query": "I will paste an answer and its cited passages. Match each consequential claim to the passage that supports it, flag unsupported leaps or missing dates, and list the smallest source check that could change the conclusion. Do not claim to open or verify links I have not supplied as text."
+      }
+    ]
+  }
+]

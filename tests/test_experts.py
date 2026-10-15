@@ -7,8 +7,8 @@ from lib.experts.base import Expert
 
 
 def test_all_experts_registered() -> None:
-    """Test that all 10 experts are registered."""
-    assert len(expert_registry) == 10
+    """Test that all 27 experts are registered."""
+    assert len(expert_registry) == 27
 
     expected_roles = [
         "agriculture",
@@ -44,7 +44,7 @@ def test_get_expert_invalid() -> None:
 def test_get_all_experts() -> None:
     """Test getting list of all experts."""
     experts = get_all_experts()
-    assert len(experts) == 10
+    assert len(experts) == 27
     assert all("role" in e and "label" in e for e in experts)
 
 
