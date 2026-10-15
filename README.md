@@ -2,6 +2,10 @@
 
 A local tool for asking a question from several AI perspectives. Choose an advisor panel, get individual answers or a roundtable discussion, and save results for later reference.
 
+**2.1.0 release candidate:** compact handoffs, less repeated roundtable advice, and recovery that keeps completed answers. See the [changelog](CHANGELOG.md) and [release readiness and upgrade notes](docs/RELEASE-READINESS.md) for the current evidence and remaining checks.
+
+The first live candidate trial verified saving, reopening, and both export contents, but found capability-grounding and save/replay UI issues. Corrections for all three findings are implemented; targeted regression results and live model adherence remain unverified. Shipping acceptance remains on hold. The original saved trial is preserved unchanged.
+
 Built-in panels:
 
 - **Agriculture:** the original ten advisors covering crops, climate, commodities, agricultural technology, supply chains, soil, pests, irrigation, organic farming, and farm economics.
@@ -19,13 +23,15 @@ Requires Python 3.12+, uv, and an OpenRouter API key and model configured in `.e
 From this checkout:
 
 ```bash
-uv sync
-cp .env.example .env
+uv sync --locked
+test -f .env || cp .env.example .env
 # Set OPENROUTER_API_KEY and OPENROUTER_MODEL in .env.
 ./start.sh
 ```
 
 Open [localhost:8123](http://localhost:8123). The checkout directory can keep its existing `ai-agriculture-advisors` name; the application and Python project are named **AI Advisors**.
+
+For an existing installation, keep your current `.env` and saved-history directory. Follow the [upgrade and recovery steps](docs/RELEASE-READINESS.md#upgrade-and-recovery) before replacing the checkout.
 
 ## Use
 
@@ -38,18 +44,22 @@ For a guided demonstration of all five panels, use the [AI Advisors demo walkthr
 
 The browser remembers the last panel and its advisor selections separately for each panel. Switching panels keeps the current question and displayed results. If browser storage is unavailable, panel selection still works for the current page.
 
-New results capture the panel name, advisor names, and the complete system prompts used. Expand **Advisor definitions used** to inspect them. Saved history and both export formats use those captured definitions even if the catalog changes later. Older results remain readable and explicitly say that their advisor definitions were not captured.
+New results capture the panel name, advisor names, and advisor definition prompts before provider calls. Expand **Advisor definitions used** to inspect them. These are profile snapshots, not a record of the complete provider request: roundtable turns remove the standalone closing instruction and add discussion-specific guidance at execution time. Saved history and both export formats use the captured definitions even if the catalog changes later. Older results remain readable and explicitly say that their advisor definitions were not captured.
 
 Advisors are AI personas using the configured model. Agreement between them does not establish independent verification. The moderator is instructed to preserve disagreements and missing evidence. These prompt instructions do not guarantee model behavior.
 
-The three decision-support panels ask each advisor to finish with a compact **Decision Check**:
+Standalone answers in the three decision-support panels ask each advisor to finish with a compact **Decision Check**:
 
 1. **Recommended next step** — the smallest useful action.
 2. **Strongest objection** — the most important reason to question it.
 3. **What remains unknown** — the missing evidence or unresolved condition that matters.
 4. **What needs your decision** — one choice that belongs to you, or “No decision needed yet.”
 
-Their roundtable moderator requests the same four points as structured data and renders them at the end of the synthesis. A missing or invalid closing object uses the existing plain-text fallback with the same instructions. Saved results retain the points, and exports include captured Decision Checks from structured roundtables or correctly formatted individual/fallback answers. No new advice is generated during export. Agriculture and Software keep their existing response formats.
+In their roundtables, advisor turns stay concise and omit individual Decision Checks; the moderator requests the same four points as structured data and renders one closing check after the synthesis. A missing or invalid closing object uses the existing plain-text fallback with the same instructions. Saved results retain the points, and exports include captured Decision Checks from structured roundtables or correctly formatted individual/fallback answers. No new advice is generated during export. Agriculture and Software keep their existing response formats.
+
+AI Workflow & Delegation roundtables use a compact handoff synthesis: the task packet itself, a review checklist tied to supplied evidence, a resumable checkpoint, and a measured comparison with manual work. The moderator separates prompt requests from enforceable tool permissions and calls out that hosted models receive submitted input.
+
+Accessibility & Effort roundtables return a reusable voice-friendly starter, a short resume record, a concrete dictation fallback, and one small trial with an observable effort check. In both panels, roundtable contributions stay brief and the moderator leaves at most one Decision Check for the end; standalone advisor answers keep their individual closing check.
 
 The roundtable synthesis model can be set separately with `OPENROUTER_SYNTHESIS_MODEL`; advisor responses continue to use `OPENROUTER_MODEL`. This is useful when the synthesis model is temporarily unavailable or needs broader provider routing.
 
@@ -57,7 +67,7 @@ The roundtable synthesis model can be set separately with `OPENROUTER_SYNTHESIS_
 
 If a provider call fails, completed advisor answers stay visible. **Retry failed advisors & synthesis** requests only failed or unfinished contributions and then refreshes the synthesis. If all advisor answers completed, **Retry synthesis** requests only the synthesis. Recovery is manual except for one bounded synthesis failover described below.
 
-A confirmed OpenRouter upstream shared-pool 429 during structured synthesis triggers one attempt through another provider of the same configured model. That attempt uses JSON mode with the original schema in the instructions because strict schema support can restrict routing to the saturated provider. Account/key limits do not trigger this failover. If it fails, further calls pause and a countdown uses the provider's retry guidance, with a 60-second default when none is supplied. The countdown is a minimum wait, not a guarantee that capacity will recover. Retry uses the original question, round order, and captured advisor prompts rather than the current sidebar selections. Successful contributions remain as written; they are not regenerated to incorporate a newly recovered earlier contribution. Synthesis uses successful contributions only and notes any gaps.
+A confirmed OpenRouter upstream shared-pool 429 during structured synthesis triggers one attempt through another provider of the same configured model. That attempt uses JSON mode with the original schema in the instructions because strict schema support can restrict routing to the saturated provider. Account/key limits do not trigger this failover. If it fails, further calls pause and a countdown uses the provider's retry guidance, with a 60-second default when none is supplied. The countdown is a minimum wait, not a guarantee that capacity will recover. Retry uses the original question, round order, and captured advisor definitions rather than the current sidebar selections; the current application's discussion and synthesis rules still apply. Successful contributions remain as written; they are not regenerated to incorporate a newly recovered earlier contribution. Synthesis uses successful contributions only and notes any gaps. Empty text synthesis remains a failure that can be retried.
 
 You can save a partial result, reopen it, and retry later. Save again after retry to keep the revised result as a new saved version. Older saved failures are supported. Exports identify incomplete synthesis instead of presenting provider error text as advice.
 
@@ -68,7 +78,7 @@ Edit two plain JSON files and restart the application:
 - `lib/experts/definitions/advisors.json`: advisor definitions.
 - `lib/experts/definitions/panels.json`: panel membership, defaults, descriptions, and example questions.
 
-An advisor needs a stable, globally unique `role`, a `label`, a `system_prompt`, and `limitations`. The optional `response_format` can be `"compact_decision"` to request the shared Decision Check; omitting it keeps the original format:
+An advisor needs a stable, globally unique `role`, a `label`, a `system_prompt`, and `limitations`. The optional `response_format` accepts `"compact_decision"` for the shared Decision Check or `"workflow_handoff"` for delegation-specific guidance plus the same closing. Omitting it keeps the original format. The built-in panel determines the specialized synthesis layout; a custom panel uses the general moderator even when it includes workflow advisors.
 
 ```json
 {
@@ -124,12 +134,14 @@ The original agricultural role keys are preserved. The old prompt-only Python su
 
 ## Development checks
 
-For panel, history, and rendering changes:
+Use the project environment for checks; a global `python -m pytest` can select a different Python without FastAPI or the async test plugin. `uv sync --locked` includes the development dependencies.
+
+For compact answers, saved handoffs, exports, and retry behavior:
 
 ```bash
-uv run pytest -q tests/test_panels.py tests/test_experts.py tests/test_routes.py tests/test_services.py tests/test_history_store.py tests/test_briefing_service.py
+uv run --locked pytest -q tests/test_decision_panels.py tests/test_briefing_service.py tests/test_roundtable_retry.py
 ```
 
-Provider calls are mocked in these tests. Browser, assistive technology, and live model behavior need their own checks.
+**65 passed in 5.50s** for those three files (and **151 passed in 3.18s** across the full locked suite) on 2026-10-15. Provider calls are mocked in these tests. The [release readiness note](docs/RELEASE-READINESS.md) gives the remaining regression command and a small live acceptance trial; browser, assistive technology, and live model behavior remain separate checks.
 
 See [API.md](API.md), [happy-path.md](happy-path.md), and `docs/architecture/` for request fields and architectural boundaries.

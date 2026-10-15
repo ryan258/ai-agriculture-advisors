@@ -1,5 +1,7 @@
 # UPDATE-IDEAS — Turning AI Agriculture Advisors into a Professional-Grade Tool
 
+> Historical brainstorming from July 2026, not the 2.1.0 release plan. Counts, line references, status claims, and model/cost assumptions below are stale. The current goal is Ryan's local personal tool, with accessible input and easy resumption; commercial and platform requirements here are optional ideas, not shipping gates. Configurable panels and scoped roundtable recovery have since been implemented. See [release readiness](RELEASE-READINESS.md) and the [changelog](../CHANGELOG.md) for current behavior and evidence.
+
 **Date:** 2026-07-10 · **Against version:** 2.0.0
 **Scope constraint:** Everything below stays inside the locked stack (FastAPI + Jinja2 + HTMX + ChromaDB, bare metal, no build step, no user accounts — see `docs/architecture/tech-stack.md`). Nothing here requires breaking an architectural contract.
 
