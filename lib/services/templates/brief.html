@@ -172,6 +172,31 @@
             </ul>
         </section>
         {% endif %}
+        {% if brief.advisor_context %}
+        <section class="brief-section">
+            <div class="section-heading compact">
+                <p class="section-kicker">{{ brief.advisor_context.panel.label }} Panel</p>
+                <h2>Advisor Definitions Used</h2>
+            </div>
+            {% for advisor in brief.advisor_context.advisors %}
+            <h3>{{ advisor.label }} ({{ advisor.role }})</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ advisor.system_prompt }}</p>
+            {% endfor %}
+        </section>
+        {% endif %}
+        {% for check in brief.decision_checks %}
+        <section class="brief-section">
+            <div class="section-heading compact">
+                <p class="section-kicker">{{ check.label }}</p>
+                <h2>Decision Check</h2>
+            </div>
+            <ul class="bullet-list">
+                {% for point in check.points %}
+                <li><strong>{{ point.label }}:</strong> {{ point.text }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endfor %}
     </main>
 </body>
 </html>

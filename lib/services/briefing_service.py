@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -10,12 +10,13 @@ import re
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from lib.experts.response_format import collect_decision_checks
 
 from ._text_utils import clean_string_list as _clean_string_list
 from ._text_utils import coerce_to_string as _coerce_to_string
 
-_ORGANIZATION = "AI Agriculture Advisors"
-_HEADER_LABEL = "Agricultural Advisory"
+_ORGANIZATION = "AI Advisors"
+_HEADER_LABEL = "AI Advisory"
 _PUBLICATION_LABEL = "Executive Brief"
 _SERVICE_TEMPLATE_DIR = Path(__file__).resolve().with_name("templates")
 _DEFAULT_RECOMMENDATION_OWNER = "Shared"
@@ -105,6 +106,8 @@ class BriefDocument:
     methodology: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
+    advisor_context: dict[str, Any] = field(default_factory=dict)
+    decision_checks: list[dict[str, Any]] = field(default_factory=list)
 
 
 @lru_cache(maxsize=1)
@@ -130,8 +133,62 @@ def build_executive_brief_markdown(result: dict[str, Any]) -> str:
 
 def _build_brief_payload(result: dict[str, Any]) -> BriefDocument:
     if result.get("result_type") == "roundtable":
-        return _build_roundtable_brief(result)
-    return _build_query_evidence(result)
+        brief = _build_roundtable_brief(result)
+    else:
+        brief = _build_query_evidence(result)
+    if result.get("result_type") == "roundtable" and result.get("synthesis_error"):
+        failure = result["synthesis_error"]
+        message = (
+            failure.get("message", "Synthesis has not completed.")
+            if isinstance(failure, dict)
+            else "Synthesis has not completed."
+        )
+        brief = replace(brief, limitations=[*brief.limitations, message])
+    if result.get("result_type") == "roundtable":
+        transcript = result.get("transcript", [])
+        completed = sum(
+            entry.get("status") == "success"
+            or (
+                "status" not in entry
+                and not str(entry.get("text", "")).startswith("Error:")
+            )
+            for entry in transcript
+        )
+        if completed < len(transcript):
+            brief = replace(
+                brief,
+                limitations=[
+                    *brief.limitations,
+                    f"{completed} of {len(transcript)} advisor contributions completed; missing responses are excluded from synthesis.",
+                ],
+                metrics=[
+                    (
+                        replace(metric, value=str(completed))
+                        if metric.label == "Contributions"
+                        else metric
+                    )
+                    for metric in brief.metrics
+                ],
+            )
+        if result.get("synthesis_stale"):
+            brief = replace(
+                brief,
+                limitations=[
+                    *brief.limitations,
+                    "The synthesis predates recovered responses and has not been refreshed.",
+                ],
+            )
+    brief = replace(brief, decision_checks=collect_decision_checks(result))
+    context = result.get("advisor_context")
+    if isinstance(context, dict) and context:
+        return replace(brief, advisor_context=context)
+    return replace(
+        brief,
+        limitations=[
+            *brief.limitations,
+            "Advisor definitions were not captured for this saved result.",
+        ],
+    )
 
 
 def _build_query_evidence(result: dict[str, Any]) -> BriefDocument:
@@ -180,7 +237,7 @@ def _build_query_evidence(result: dict[str, Any]) -> BriefDocument:
             )
         )
 
-    query = result.get("query", "Agricultural advisory query")
+    query = result.get("query", "Advisor query")
     headline, remainder_paragraphs = _extract_headline_and_body(governing_insight)
     display_insight = headline or governing_insight
     composed_summary = _compose_executive_summary(
@@ -221,7 +278,7 @@ def _build_query_evidence(result: dict[str, Any]) -> BriefDocument:
         ),
         findings=findings,
         methodology=[
-            "Built from saved expert responses in AI Agriculture Advisors.",
+            "Built from saved expert responses in AI Advisors.",
             "Rendered into a decision-ready brief without re-querying the LLM providers.",
         ],
         limitations=[
@@ -336,7 +393,7 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
             [display_insight] if display_insight else []
         )
 
-    query = result.get("query", "Agricultural advisory roundtable")
+    query = result.get("query", "Advisor roundtable")
     return BriefDocument(
         brief_id=result.get("id", ""),
         title=_title_case_query(query),
@@ -442,7 +499,7 @@ def _build_roundtable_brief_from_structured(
         original_insight=governing_insight,
     )
 
-    query = result.get("query", "Agricultural advisory roundtable")
+    query = result.get("query", "Advisor roundtable")
     return BriefDocument(
         brief_id=result.get("id", ""),
         title=_title_case_query(query),
@@ -864,6 +921,33 @@ def _render_brief_markdown(brief: BriefDocument) -> str:
         lines.extend(["## Sources", ""])
         for source in brief.sources:
             lines.append(f"- {source}")
+        lines.append("")
+
+    if brief.advisor_context:
+        context = brief.advisor_context
+        lines.extend(
+            [
+                "## Advisor Definitions Used",
+                "",
+                f"**Panel:** {context['panel']['label']} ({context['panel']['id']})",
+                "",
+            ]
+        )
+        for advisor in context["advisors"]:
+            lines.extend(
+                [
+                    f"### {advisor['label']} ({advisor['role']})",
+                    "",
+                    advisor["system_prompt"],
+                    "",
+                ]
+            )
+
+    for check in brief.decision_checks:
+        lines.extend([f"## Decision Check — {check['label']}", ""])
+        lines.extend(
+            f"- **{point['label']}:** {point['text']}" for point in check["points"]
+        )
         lines.append("")
 
     return "\n".join(lines).strip()

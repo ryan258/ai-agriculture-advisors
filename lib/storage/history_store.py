@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings
+from lib.experts.catalog import validate_advisor_context
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class HistoryStore:
         responses: List[Dict[str, Any]],
         result_type: str = "query",
         roundtable_data: Optional[Dict[str, Any]] = None,
+        advisor_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Save a query result to the store.
@@ -72,7 +74,7 @@ class HistoryStore:
             "timestamp": timestamp,
         }
 
-        document_data = {
+        document_data: dict[str, Any] = {
             "query": query,
             "experts": experts,
             "responses": responses,
@@ -80,10 +82,24 @@ class HistoryStore:
             "timestamp": timestamp,
         }
 
+        if advisor_context is not None:
+            document_data["advisor_context"] = validate_advisor_context(
+                advisor_context, experts
+            )
+
         if roundtable_data:
             document_data["transcript"] = roundtable_data.get("transcript", [])
             document_data["final_answer"] = roundtable_data.get("final_answer", "")
             document_data["rounds"] = roundtable_data.get("rounds", 0)
+            for key in (
+                "synthesis_error",
+                "synthesis_stale",
+                "retry_at",
+                "compact_ending",
+                "synthesis_model",
+            ):
+                if key in roundtable_data:
+                    document_data[key] = roundtable_data[key]
             if roundtable_data.get("consensus_brief"):
                 document_data["consensus_brief"] = roundtable_data.get(
                     "consensus_brief", {}
@@ -112,18 +128,19 @@ class HistoryStore:
             include=["metadatas"],
         )
 
-        if not results["ids"]:
+        if not results["ids"] or not results.get("metadatas"):
             return []
 
         # Combine IDs with metadata and sort by timestamp
         history = []
+        metadatas = results["metadatas"]
         for i, result_id in enumerate(results["ids"]):
-            metadata = results["metadatas"][i]
+            metadata = metadatas[i] if metadatas else {}
             history.append(
                 {
                     "id": result_id,
                     "query": metadata.get("query", ""),
-                    "experts": json.loads(metadata.get("experts", "[]")),
+                    "experts": json.loads(str(metadata.get("experts", "[]"))),
                     "result_type": metadata.get("result_type", "query"),
                     "timestamp": metadata.get("timestamp", ""),
                 }
@@ -148,11 +165,12 @@ class HistoryStore:
             include=["documents", "metadatas"],
         )
 
-        if not results["ids"]:
+        documents = results.get("documents")
+        if not results["ids"] or not documents:
             return None
 
         try:
-            document = json.loads(results["documents"][0])
+            document = json.loads(documents[0])
         except (json.JSONDecodeError, TypeError) as e:
             logger.error(f"Corrupt document for result {result_id}: {e}")
             return None

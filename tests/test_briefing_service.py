@@ -35,7 +35,7 @@ def test_builds_query_brief_html() -> None:
 
     html = build_executive_brief_html(result)
 
-    assert "AI Agriculture Advisors" in html
+    assert "AI Advisors" in html
     assert "How should I manage drought risk this season?" in html
     assert "Agricultural Science Expert" in html
 
