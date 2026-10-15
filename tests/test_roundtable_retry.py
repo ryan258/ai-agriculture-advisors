@@ -26,6 +26,38 @@ BRIEF = {
     "decision_implications": [],
     "limitations": [],
 }
+WORKFLOW_HANDOFF_BRIEF = {
+    "task_packet": (
+        "Goal: Delegate only the supplied project task. Input: approved material. "
+        "Allowed: produce a reviewable draft. Blocked: irreversible actions. "
+        "Deliverable: one draft. Stop if input is missing. Enforce tool limits outside the prompt. "
+        "Data boundary: share approved material only."
+    ),
+    "review_checklist": [
+        {
+            "check": "Check the draft against its supplied source.",
+            "evidence_target": "The source material included with the assignment.",
+        },
+        {
+            "check": "Confirm blocked actions were not taken.",
+            "evidence_target": "The reviewable output and tool-enforced boundary.",
+        },
+    ],
+    "resume_checkpoint": (
+        "Record: input, instructions, output, status, and next action. "
+        "Resume from that record."
+    ),
+    "success_measure": (
+        "Keep only if review and recovery time are lower than the manual baseline "
+        "with no material errors."
+    ),
+    "compact_ending": {
+        "recommended_next_step": "Delegate one bounded task.",
+        "strongest_objection": "Review may cost more than it saves.",
+        "unknowns": "The manual baseline is not measured.",
+        "user_decision": "Choose the first task to try.",
+    },
+}
 
 
 def _rate_limit(header="60"):
@@ -121,6 +153,30 @@ async def test_synthesis_only_retry_never_calls_advisors():
     provider.generate_json.assert_awaited_once()
     assert result["synthesis_error"] is None
     assert result["transcript"] == state["transcript"]
+
+
+@pytest.mark.asyncio
+async def test_empty_plain_text_synthesis_remains_retryable_without_rerunning_advisors():
+    provider = AsyncMock()
+    provider.generate_json.return_value = {}
+    provider.generate.return_value = " \n\t"
+    state = _state()
+    original = copy.deepcopy(state)
+    with (
+        patch("lib.services.roundtable_service.get_llm_client", return_value=provider),
+        patch(
+            "lib.experts.base.get_llm_client",
+            side_effect=AssertionError("Advisor must not be called"),
+        ),
+    ):
+        result = await retry_roundtable(state)
+
+    assert result["synthesis_error"]["kind"] == "response"
+    assert result["final_answer"] == ""
+    assert result["transcript"] == original["transcript"]
+    assert state == original
+    provider.generate_json.assert_awaited_once()
+    provider.generate.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -370,7 +426,16 @@ async def test_four_saved_answers_survive_real_client_provider_failover():
             side_effect=[
                 httpx.Response(429, json=POOL_ERROR),
                 httpx.Response(
-                    200, json={"choices": [{"message": {"content": json.dumps(BRIEF)}}]}
+                    200,
+                    json={
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": json.dumps(WORKFLOW_HANDOFF_BRIEF)
+                                }
+                            }
+                        ]
+                    },
                 ),
             ]
         )
@@ -379,6 +444,7 @@ async def test_four_saved_answers_survive_real_client_provider_failover():
     assert route.call_count == 2
     assert result["synthesis_error"] is None
     assert result["final_answer"]
+    assert result["consensus_brief"]["synthesis_format"] == "workflow_handoff"
     assert result["transcript"] == original["transcript"]
     assert state == original
     assert all(

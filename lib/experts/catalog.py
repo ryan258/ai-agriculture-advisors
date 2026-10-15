@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Any
 
 from .base import Expert
-from .response_format import COMPACT_DECISION_FORMAT, COMPACT_ENDING_INSTRUCTIONS
+from .response_format import (
+    ACCESSIBILITY_CAPABILITY_INSTRUCTIONS,
+    COMPACT_DECISION_FORMAT,
+    COMPACT_ENDING_INSTRUCTIONS,
+    WORKFLOW_ADVISOR_INSTRUCTIONS,
+    WORKFLOW_HANDOFF_FORMAT,
+)
 
 DEFINITIONS_DIR = Path(__file__).resolve().with_name("definitions")
 
@@ -48,7 +54,11 @@ class ConfiguredExpert(Expert):
     def __init__(
         self, definition: AdvisorDefinition, response_format: str = ""
     ) -> None:
-        if response_format not in ("", COMPACT_DECISION_FORMAT):
+        if response_format not in (
+            "",
+            COMPACT_DECISION_FORMAT,
+            WORKFLOW_HANDOFF_FORMAT,
+        ):
             raise ValueError(f"Unknown advisor response format: {response_format}")
         self.definition = definition
         self.response_format = response_format
@@ -66,7 +76,11 @@ class ConfiguredExpert(Expert):
         prompt = (
             f"{self.definition.system_prompt}\n\nLimits: {self.definition.limitations}"
         )
-        if self.response_format == COMPACT_DECISION_FORMAT:
+        if self.response_format == WORKFLOW_HANDOFF_FORMAT:
+            prompt += f"\n\n{WORKFLOW_ADVISOR_INSTRUCTIONS}"
+        if self.role.startswith("accessibility_effort_"):
+            prompt += f"\n\n{ACCESSIBILITY_CAPABILITY_INSTRUCTIONS}"
+        if self.response_format in (COMPACT_DECISION_FORMAT, WORKFLOW_HANDOFF_FORMAT):
             prompt += f"\n\n{COMPACT_ENDING_INSTRUCTIONS}"
         return prompt
 

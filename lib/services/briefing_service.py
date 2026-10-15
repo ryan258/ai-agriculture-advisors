@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from lib.experts.response_format import collect_decision_checks
+from lib.experts.response_format import collect_decision_checks, extract_compact_ending
 
 from ._text_utils import clean_string_list as _clean_string_list
 from ._text_utils import coerce_to_string as _coerce_to_string
@@ -108,6 +108,10 @@ class BriefDocument:
     sources: list[str] = field(default_factory=list)
     advisor_context: dict[str, Any] = field(default_factory=dict)
     decision_checks: list[dict[str, Any]] = field(default_factory=list)
+    workflow_handoff: dict[str, Any] = field(default_factory=dict)
+    workflow_handoff_text: str = ""
+    accessibility_handoff: dict[str, Any] = field(default_factory=dict)
+    accessibility_handoff_text: str = ""
 
 
 @lru_cache(maxsize=1)
@@ -305,6 +309,17 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
     )
     normalized_final_answer = _collapse_duplicate_consensus_sections(final_answer)
     intro, sections = _parse_markdown_sections(normalized_final_answer)
+    workflow_handoff_text = ""
+    accessibility_handoff_text = ""
+    context = result.get("advisor_context")
+    panel = context.get("panel") if isinstance(context, dict) else None
+    if isinstance(panel, dict):
+        if panel.get("id") == "ai_workflow":
+            workflow_handoff_text = _without_decision_check(normalized_final_answer)
+        elif panel.get("id") == "accessibility_effort":
+            accessibility_handoff_text = _without_decision_check(
+                normalized_final_answer
+            )
     agreement_lines = sections.get("key points of agreement", [])
     perspective_lines = sections.get("important differences in perspective", [])
     conclusions_lines = sections.get("actionable conclusions", [])
@@ -330,27 +345,48 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
             recommendations = _build_recommendations_from_consensus_matrix(inline_rows)
     recommendations = _apply_recommendation_defaults(recommendations)
 
-    governing_insight = (
-        bottom_line
-        or intro
-        or _first_non_empty(finding.claim for finding in key_findings)
-        or _clean_markdown_text(normalized_final_answer)
-    )
-
-    executive_summary = [item for item in [intro, bottom_line] if item]
-    if not executive_summary:
-        executive_summary = [governing_insight]
-
-    if not key_findings:
-        fallback_summary = _extract_summary(normalized_final_answer)
-        if fallback_summary:
-            key_findings = [
-                BriefFinding(
-                    title="Consensus",
-                    claim=fallback_summary,
-                    confidence="directional",
+    if workflow_handoff_text or accessibility_handoff_text:
+        if accessibility_handoff_text:
+            governing_insight = "Reusable voice-friendly starter with a checkpoint and dictation fallback."
+        else:
+            first_packet_line = _first_non_empty(
+                _clean_markdown_line(line) for line in sections.get("task packet", [])
+            )
+            label, separator, objective = first_packet_line.partition(":")
+            governing_insight = (
+                (
+                    objective.strip()
+                    if separator and label.strip().casefold() == "goal"
+                    else first_packet_line
                 )
-            ]
+                or "See the saved workflow handoff for the task packet and review checks."
+            )
+        executive_summary = []
+        key_findings = []
+        decision_implications = []
+        recommendations = []
+    else:
+        governing_insight = (
+            bottom_line
+            or intro
+            or _first_non_empty(finding.claim for finding in key_findings)
+            or _clean_markdown_text(normalized_final_answer)
+        )
+
+        executive_summary = [item for item in [intro, bottom_line] if item]
+        if not executive_summary:
+            executive_summary = [governing_insight]
+
+        if not key_findings:
+            fallback_summary = _extract_summary(normalized_final_answer)
+            if fallback_summary:
+                key_findings = [
+                    BriefFinding(
+                        title="Consensus",
+                        claim=fallback_summary,
+                        confidence="directional",
+                    )
+                ]
 
     limitations = [
         "Built from a saved multi-expert roundtable consensus without re-running the discussion.",
@@ -388,7 +424,11 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
         executive_summary,
         original_insight=governing_insight,
     )
-    if not composed_summary:
+    if (
+        not composed_summary
+        and not workflow_handoff_text
+        and not accessibility_handoff_text
+    ):
         composed_summary = executive_summary or (
             [display_insight] if display_insight else []
         )
@@ -423,6 +463,8 @@ def _build_roundtable_brief(result: dict[str, Any]) -> BriefDocument:
         ],
         limitations=limitations,
         sources=sources,
+        workflow_handoff_text=workflow_handoff_text,
+        accessibility_handoff_text=accessibility_handoff_text,
     )
 
 
@@ -432,6 +474,19 @@ def _build_roundtable_brief_from_structured(
     consensus_brief: dict[str, Any],
 ) -> BriefDocument:
     governing_insight = str(consensus_brief.get("governing_insight", "")).strip()
+    if consensus_brief.get("synthesis_format") == "workflow_handoff":
+        task_packet = str(consensus_brief.get("task_packet", "")).strip()
+        first_line = task_packet.splitlines()[0] if task_packet else ""
+        label, separator, objective = first_line.partition(":")
+        governing_insight = (
+            objective.strip()
+            if separator and label.strip().casefold() == "goal"
+            else first_line
+        )
+    if consensus_brief.get("synthesis_format") == "accessibility_handoff":
+        governing_insight = (
+            "Reusable voice-friendly starter with a checkpoint and dictation fallback."
+        )
     executive_summary = _clean_string_list(consensus_brief.get("executive_summary", []))
     findings = [
         BriefFinding(
@@ -484,6 +539,16 @@ def _build_roundtable_brief_from_structured(
         ]
     ) or [str(expert) for expert in result.get("experts", []) if str(expert).strip()]
 
+    workflow_handoff = (
+        consensus_brief
+        if consensus_brief.get("synthesis_format") == "workflow_handoff"
+        else {}
+    )
+    accessibility_handoff = (
+        consensus_brief
+        if consensus_brief.get("synthesis_format") == "accessibility_handoff"
+        else {}
+    )
     # Split over-long insights into a readable headline + body, and dedupe against the
     # executive_summary field (LLMs frequently dump the same blob into both).
     headline, remainder_paragraphs = _extract_headline_and_body(governing_insight)
@@ -499,6 +564,10 @@ def _build_roundtable_brief_from_structured(
         original_insight=governing_insight,
     )
 
+    if not composed_summary and not workflow_handoff and not accessibility_handoff:
+        composed_summary = executive_summary or (
+            [display_governing_insight] if display_governing_insight else []
+        )
     query = result.get("query", "Advisor roundtable")
     return BriefDocument(
         brief_id=result.get("id", ""),
@@ -531,6 +600,8 @@ def _build_roundtable_brief_from_structured(
         ],
         limitations=limitations,
         sources=sources,
+        workflow_handoff=workflow_handoff,
+        accessibility_handoff=accessibility_handoff,
     )
 
 
@@ -721,6 +792,31 @@ def _parse_markdown_sections(text: str) -> tuple[str, dict[str, list[str]]]:
     return _clean_markdown_text("\n".join(intro_lines)), sections
 
 
+def _without_decision_check(text: str) -> str:
+    """Keep a plain-text handoff intact while leaving its ending to the saved check."""
+    source = str(text).replace("\r\n", "\n")
+    if not extract_compact_ending(source):
+        return source.strip()
+    lines = source.splitlines()
+    for index, line in enumerate(lines):
+        if re.match(r"^[ \t]*[-*][ \t]+(?:\*\*)?Recommended next step:", line):
+            source = "\n".join(lines[:index])
+            break
+
+    lines: list[str] = []
+    skipping = False
+    for line in source.splitlines():
+        heading = _HEADING_RE.match(line.strip())
+        if heading:
+            skipping = (
+                _normalize_heading_key(_clean_markdown_line(heading.group(1)))
+                == "decision check"
+            )
+        if not skipping:
+            lines.append(line)
+    return "\n".join(lines).strip()
+
+
 def _parse_list_items(lines: list[str]) -> list[str]:
     items: list[str] = []
     index = 0
@@ -871,6 +967,65 @@ def _render_brief_markdown(brief: BriefDocument) -> str:
         lines.extend(["## Executive Summary", ""])
         for paragraph in brief.executive_summary:
             lines.extend([paragraph, ""])
+
+    if brief.workflow_handoff:
+        handoff = brief.workflow_handoff
+        lines.extend(
+            [
+                "## Task Packet",
+                "",
+                handoff["task_packet"],
+                "",
+                "## Review Checklist",
+                "",
+            ]
+        )
+        lines.extend(
+            f"- [ ] {item['check']} **Evidence:** {item['evidence_target']}"
+            for item in handoff["review_checklist"]
+        )
+        lines.extend(
+            [
+                "",
+                "## Resume Checkpoint",
+                "",
+                handoff["resume_checkpoint"],
+            ]
+        )
+        lines.extend(
+            [
+                "",
+                "## Success Measure",
+                "",
+                handoff["success_measure"],
+                "",
+            ]
+        )
+
+    if brief.accessibility_handoff:
+        handoff = brief.accessibility_handoff
+        for key, heading in (
+            ("starter_template", "Reusable Starter"),
+            ("resume_checkpoint", "Resume Checkpoint"),
+            ("dictation_fallback", "Dictation Fallback"),
+            ("first_trial", "First Trial"),
+        ):
+            lines.extend([f"## {heading}", "", handoff[key], ""])
+
+    if brief.workflow_handoff_text:
+        lines.extend(
+            ["## Saved Plain-Text Handoff", "", brief.workflow_handoff_text, ""]
+        )
+
+    if brief.accessibility_handoff_text:
+        lines.extend(
+            [
+                "## Saved Accessibility Handoff",
+                "",
+                brief.accessibility_handoff_text,
+                "",
+            ]
+        )
 
     if brief.metrics:
         lines.extend(["## Metrics", ""])

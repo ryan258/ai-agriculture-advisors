@@ -80,7 +80,7 @@
     "suggested_queries": [
       {
         "label": "Delegate release notes",
-        "query": "I want an AI coding agent to draft release notes from a diff I provide. It may return a draft file, but it must not commit, push, merge, or publish. Give me a compact task packet, a review checklist, a checkpoint that makes interruption safe, and the one decision I should keep for myself. Call out the risk that could make this trial cost more review time than it saves."
+        "query": "I want a remote AI coding agent to draft release notes from a diff I supply. It may read that diff and write one draft to an approved scratch location, but it cannot edit the repository or commit, push, merge, or publish. Give me the actual compact task packet, not advice to create one. Include three checks that trace each material claim to a changed hunk; mark them pending if no diff is present. Add a resume checkpoint with the input reference or hash only if available, exact instructions, draft location, status, and next step. Compare total human setup, review, correction, and recovery time with similar manual drafting; do not claim savings without a measured baseline. Distinguish prompt rules from enforceable tool permissions, and require approval or redaction before sending the diff to the hosted model."
       },
       {
         "label": "Bound a code change",

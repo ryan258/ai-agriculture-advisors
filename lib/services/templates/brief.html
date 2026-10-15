@@ -53,6 +53,70 @@
             {% endif %}
         </section>
 
+        {% if brief.workflow_handoff %}
+        {% set handoff = brief.workflow_handoff %}
+        <section class="brief-section workflow-handoff">
+            <div class="section-heading">
+                <p class="section-kicker">Workflow Handoff</p>
+                <h2>Task Packet</h2>
+            </div>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.task_packet }}</p>
+
+            <h3>Review Checklist</h3>
+            <ul class="bullet-list">
+                {% for item in handoff.review_checklist %}
+                <li><strong>{{ item.check }}</strong> Evidence: {{ item.evidence_target }}</li>
+                {% endfor %}
+            </ul>
+
+            <h3>Resume Checkpoint</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.resume_checkpoint }}</p>
+
+            <h3>Success Measure</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.success_measure }}</p>
+        </section>
+        {% endif %}
+
+        {% if brief.accessibility_handoff %}
+        {% set handoff = brief.accessibility_handoff %}
+        <section class="brief-section workflow-handoff">
+            <div class="section-heading">
+                <p class="section-kicker">Accessibility &amp; Effort</p>
+                <h2>Reusable Starter</h2>
+            </div>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.starter_template }}</p>
+
+            <h3>Resume Checkpoint</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.resume_checkpoint }}</p>
+
+            <h3>Dictation Fallback</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.dictation_fallback }}</p>
+
+            <h3>First Trial</h3>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ handoff.first_trial }}</p>
+        </section>
+        {% endif %}
+
+        {% if brief.accessibility_handoff_text %}
+        <section class="brief-section workflow-handoff">
+            <div class="section-heading">
+                <p class="section-kicker">Accessibility &amp; Effort</p>
+                <h2>Saved Accessibility Handoff</h2>
+            </div>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ brief.accessibility_handoff_text }}</p>
+        </section>
+        {% endif %}
+
+        {% if brief.workflow_handoff_text %}
+        <section class="brief-section workflow-handoff">
+            <div class="section-heading">
+                <p class="section-kicker">Workflow Handoff</p>
+                <h2>Saved Plain-Text Handoff</h2>
+            </div>
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ brief.workflow_handoff_text }}</p>
+        </section>
+        {% endif %}
+
         {% if brief.findings %}
         <section class="brief-section">
             <div class="section-heading">

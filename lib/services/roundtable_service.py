@@ -10,9 +10,11 @@ from lib.experts import get_expert
 from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
 from lib.experts.response_format import (
+    ACCESSIBILITY_CAPABILITY_INSTRUCTIONS,
     COMPACT_DECISION_FORMAT,
     COMPACT_ENDING_FIELDS,
     COMPACT_ENDING_INSTRUCTIONS,
+    WORKFLOW_HANDOFF_FORMAT,
     normalize_compact_ending,
     render_compact_ending,
 )
@@ -91,11 +93,83 @@ _ROUND_TABLE_CONSENSUS_SCHEMA: dict[str, Any] = {
     },
 }
 
+_AI_WORKFLOW_HANDOFF_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "task_packet",
+        "review_checklist",
+        "resume_checkpoint",
+        "success_measure",
+    ],
+    "properties": {
+        "task_packet": {"type": "string", "minLength": 40, "maxLength": 900},
+        "review_checklist": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["check", "evidence_target"],
+                "properties": {
+                    "check": {"type": "string", "minLength": 1, "maxLength": 180},
+                    "evidence_target": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180,
+                    },
+                },
+            },
+        },
+        "resume_checkpoint": {"type": "string", "minLength": 1, "maxLength": 500},
+        "success_measure": {"type": "string", "minLength": 1, "maxLength": 500},
+    },
+}
+
+_ACCESSIBILITY_HANDOFF_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "starter_template",
+        "resume_checkpoint",
+        "dictation_fallback",
+        "first_trial",
+    ],
+    "properties": {
+        "starter_template": {"type": "string", "minLength": 40, "maxLength": 900},
+        "resume_checkpoint": {"type": "string", "minLength": 1, "maxLength": 500},
+        "dictation_fallback": {"type": "string", "minLength": 1, "maxLength": 500},
+        "first_trial": {"type": "string", "minLength": 1, "maxLength": 500},
+    },
+}
+
+
+def _schema_with_compact_ending(schema: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **schema,
+        "required": [*schema["required"], "compact_ending"],
+        "properties": {
+            **schema["properties"],
+            "compact_ending": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [key for key, _ in COMPACT_ENDING_FIELDS],
+                "properties": {
+                    key: {"type": "string", "minLength": 1, "maxLength": 180}
+                    for key, _ in COMPACT_ENDING_FIELDS
+                },
+            },
+        },
+    }
+
 
 async def run_roundtable(
     query: str,
     roles: List[str],
     rounds: int = 3,
+    *,
+    advisor_context: dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Run a discussion, retaining completed contributions if a provider call fails."""
     if len(roles) < 2:
@@ -104,14 +178,36 @@ async def run_roundtable(
             "transcript": [],
             "final_answer": "",
         }
-    return await retry_roundtable(
-        {
-            "query": query,
-            "roles": roles,
-            "rounds": rounds,
-            "transcript": [],
-            "final_answer": "",
-        }
+    initial_state = {
+        "query": query,
+        "roles": roles,
+        "rounds": rounds,
+        "transcript": [],
+        "final_answer": "",
+    }
+    if advisor_context is not None:
+        initial_state["advisor_context"] = advisor_context
+    return await retry_roundtable(initial_state)
+
+
+def _uses_workflow_handoff(state: dict[str, Any]) -> bool:
+    context = state.get("advisor_context")
+    panel = context.get("panel") if isinstance(context, dict) else None
+    if isinstance(panel, dict) and isinstance(panel.get("id"), str):
+        return panel["id"] == "ai_workflow"
+    return bool(state.get("roles")) and all(
+        getattr(get_expert(role), "response_format", "") == WORKFLOW_HANDOFF_FORMAT
+        for role in state["roles"]
+    )
+
+
+def _uses_accessibility_handoff(state: dict[str, Any]) -> bool:
+    context = state.get("advisor_context")
+    panel = context.get("panel") if isinstance(context, dict) else None
+    if isinstance(panel, dict) and isinstance(panel.get("id"), str):
+        return panel["id"] == "accessibility_effort"
+    return bool(state.get("roles")) and all(
+        role.startswith("accessibility_effort_") for role in state["roles"]
     )
 
 
@@ -131,6 +227,22 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
         item["role"]: item
         for item in (state.get("advisor_context") or {}).get("advisors", [])
     }
+    workflow_handoff = _uses_workflow_handoff(state)
+    accessibility_handoff = _uses_accessibility_handoff(state)
+    compact_ending = state.get(
+        "compact_ending",
+        any(
+            COMPACT_ENDING_INSTRUCTIONS in item["system_prompt"]
+            for item in snapshots.values()
+        )
+        or any(
+            getattr(get_expert(role), "response_format", "")
+            in (COMPACT_DECISION_FORMAT, WORKFLOW_HANDOFF_FORMAT)
+            for role in state["roles"]
+        ),
+    )
+    compact_ending = bool(compact_ending or workflow_handoff or accessibility_handoff)
+    state["compact_ending"] = compact_ending
     changed = False
     for index, entry in enumerate(state["transcript"]):
         if entry["status"] == "success":
@@ -150,6 +262,7 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
                 query=state["query"],
                 transcript=transcript_text,
                 round_num=entry["round"],
+                compact_roundtable=compact_ending,
             )
             if not response.strip():
                 raise ValueError("Empty advisor response")
@@ -189,23 +302,13 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
     settings = get_settings()
     synthesis_model = settings.openrouter_synthesis_model or settings.openrouter_model
     state["synthesis_model"] = synthesis_model
-    compact_ending = state.get(
-        "compact_ending",
-        any(
-            COMPACT_ENDING_INSTRUCTIONS in item["system_prompt"]
-            for item in snapshots.values()
-        )
-        or any(
-            getattr(get_expert(role), "response_format", "") == COMPACT_DECISION_FORMAT
-            for role in state["roles"]
-        ),
-    )
-    state["compact_ending"] = compact_ending
     try:
         answer, brief = await _generate_consensus(
             state["query"],
             state["transcript"],
             compact_ending=compact_ending,
+            workflow_handoff=workflow_handoff,
+            accessibility_handoff=accessibility_handoff,
             synthesis_model=synthesis_model,
         )
         state.update(
@@ -231,6 +334,8 @@ async def _generate_consensus(
     transcript: List[Dict[str, str]],
     *,
     compact_ending: bool = False,
+    workflow_handoff: bool = False,
+    accessibility_handoff: bool = False,
     synthesis_model: str | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """
@@ -254,14 +359,102 @@ async def _generate_consensus(
             + transcript_text
         )
 
-    moderator_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors.
+    if workflow_handoff:
+        moderator_prompt = """You are the moderator for AI Workflow & Delegation.
+Return only the requested structured handoff object. Keep it short and immediately usable.
+Base checks only on material actually supplied; do not claim to have inspected files, diffs,
+permissions, provider settings, or completed actions unless the discussion contains that evidence.
+Separate instructions for an agent from tool permissions that must enforce them. A hosted-model
+request sends its supplied text to the provider; do not assert retention or privacy settings.
+Do not force agreement or treat agreement between AI personas as independent verification.
+Do not include markdown fences or commentary outside the schema."""
+        summary_prompt = f"""Create the smallest useful delegation handoff for this request.
+
+Original Query: {query}
+
+Discussion Transcript:
+{transcript_text}
+
+Fill the schema directly; do not substitute advice to create these deliverables later.
+- Task packet: state the objective, exact input (or what's still needed), allowed actions,
+  blocked actions, reviewable deliverable, and a clear stop condition. Allow writing only to
+  an approved scratch location when a file is requested. Do not invent a path. Put these in
+  concise labeled lines: Goal, Input, Allowed, Blocked, Deliverable, Stop if, Enforce with
+  tools, and Data boundary.
+- Tool enforcement: say that the execution environment must enforce path/tool limits; prompt
+  wording alone cannot guarantee that no repository change occurs.
+- Data boundary: advise submitting only approved/redacted material. Distinguish the model
+  request to its provider from any extra network access by the delegated agent.
+- Review checklist: give 2-4 checks. For factual claims, identify the supplied source evidence
+  to compare against (for code release notes, the changed file/hunk). If that evidence is absent,
+  say the check is pending; never invent filenames, hunks, dates, versions, or links.
+- Resume checkpoint: provide two short labeled lines, Record and Resume. The record includes
+  input reference/hash if available, exact instructions, output location, status, and next action.
+  Never fabricate a hash or path.
+- Success measure: provide three short labeled lines, Manual baseline, AI trial, and Keep only if.
+  Compare human time on a similar manual task with setup, review, correction,
+  and recovery time for the AI trial. Call it a time saver only if measured human time is lower
+  and no material factual error remains after review; without a baseline, call the result unknown.
+- compact_ending, when requested: one brief sentence for each point, with no repetition of the
+  packet, checklist, checkpoint, or success measure.
+Omit generic summaries, extra recommendations, and repeated conclusions."""
+        schema_name = "ai_workflow_handoff_brief"
+        schema = _AI_WORKFLOW_HANDOFF_SCHEMA
+        if compact_ending:
+            schema = _schema_with_compact_ending(schema)
+            moderator_prompt += (
+                "\nInclude the four required compact_ending points as brief sentences. "
+                "Do not repeat those points elsewhere in the object."
+            )
+    elif accessibility_handoff:
+        moderator_prompt = """You are the moderator for Accessibility & Effort.
+Return only the requested structured starter and recovery plan. Make it usable in a short session.
+Use the original user query as the only evidence of existing capabilities. The discussion contains
+advisor proposals, not proof that tools work. Discard unsupported operational claims from it.
+Do not assume the user can type. Preserve the user's final choice. Do not invent saved locations,
+aliases, completed setup, or automatic saving."""
+        moderator_prompt += f"\n\n{ACCESSIBILITY_CAPABILITY_INSTRUCTIONS}"
+        summary_prompt = f"""Turn this request and discussion into a usable, low-effort starter for one recurring task.
+
+Original Query: {query}
+
+Discussion Transcript:
+{transcript_text}
+
+Return the actual starter text and recovery steps, not advice to create them later.
+- Reusable starter: provide a short, voice-friendly template now. Put reusable background in
+  a saved-reference placeholder so it need not be dictated again; include only a few fields for
+  today's goal and next step. Mark unknown task details as clear placeholders. Do not choose a
+  storage product or invent an alias. This starter is reusable text, not an installed voice command.
+- Resume checkpoint: give the exact compact record to save: task/reference, last completed step,
+  next action, and blocker or none. Do not promise automatic bookmarks, timestamps, or restoration.
+- Dictation fallback: say how to preserve the checkpoint if dictation garbles one field; recover
+  only that field, not all background. If dictation is unavailable, stop at the saved checkpoint
+  and use an alias or short-code entry point only if the original user query confirms it works.
+  If no reliable input is available, pause; if no record has actually been saved, say so. Never make
+  typing the required fallback or assume that generating a record has saved it.
+- First trial: one small reversible use of the starter. Compare the number of repeated background
+  entries and practical interactions with the current routine; claim improvement only after trying it.
+- Decision Check: use at most one user decision, and only if it blocks the first trial. Otherwise
+  return "No decision needed yet." Do not ask platform-selection questions merely to fill the field.
+Omit repeated objections, generic summaries, and extra recommendations."""
+        schema_name = "accessibility_workflow_starter"
+        schema = _ACCESSIBILITY_HANDOFF_SCHEMA
+        if compact_ending:
+            schema = _schema_with_compact_ending(schema)
+            moderator_prompt += (
+                "\nUse one compact Decision Check after the handoff only. "
+                "Do not repeat the same question in any handoff field."
+            )
+    else:
+        moderator_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors.
 Return a structured consensus object that a reporting system can render directly.
 Keep every field concise, decision-oriented, and grounded in the discussion.
 Preserve unresolved disagreements in decision_implications and unknowns in limitations.
 Do not force agreement or treat agreement between AI personas as independent verification.
 Do not include markdown fences or commentary outside the schema."""
 
-    summary_prompt = f"""Based on the following expert discussion, produce a structured consensus for the original query.
+        summary_prompt = f"""Based on the following expert discussion, produce a structured consensus for the original query.
 
 Original Query: {query}
 
@@ -280,43 +473,36 @@ Requirements:
 - recommendations: concrete moves with owner, expected impact, and key risk.
 - limitations: only include real uncertainty or missing evidence.
 """
-
-    schema = _ROUND_TABLE_CONSENSUS_SCHEMA
-    if compact_ending:
-        schema = {
-            **schema,
-            "required": [*schema["required"], "compact_ending"],
-            "properties": {
-                **schema["properties"],
-                "compact_ending": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": [key for key, _ in COMPACT_ENDING_FIELDS],
-                    "properties": {
-                        key: {"type": "string", "minLength": 1}
-                        for key, _ in COMPACT_ENDING_FIELDS
-                    },
-                },
-            },
-        }
-        moderator_prompt += (
-            "\nPopulate compact_ending with four brief sentences: the smallest useful "
-            "recommended_next_step, the strongest_objection, the most consequential "
-            "unknowns, and one user_decision (or 'No decision needed yet'). "
-            "Do not invent evidence, objections, or decisions to fill a field. "
-            "State when no material objection or unknown is apparent within the supplied context. "
-            "Use the JSON fields, not Markdown bullets, and do not duplicate the closing points elsewhere."
-        )
+        schema_name = "roundtable_consensus_brief"
+        schema = _ROUND_TABLE_CONSENSUS_SCHEMA
+        if compact_ending:
+            schema = _schema_with_compact_ending(schema)
+            moderator_prompt += (
+                "\nPopulate compact_ending with four brief sentences: the smallest useful "
+                "recommended_next_step, the strongest_objection, the most consequential "
+                "unknowns, and one user_decision (or 'No decision needed yet'). "
+                "Do not invent evidence, objections, or decisions to fill a field. "
+                "State when no material objection or unknown is apparent within the supplied context. "
+                "Use the JSON fields, not Markdown bullets, and do not duplicate the closing points elsewhere."
+            )
 
     try:
         structured_response = await get_llm_client().generate_json(
             summary_prompt,
             moderator_prompt,
-            schema_name="roundtable_consensus_brief",
+            schema_name=schema_name,
             schema=schema,
             model=synthesis_model,
         )
-        consensus_brief = _normalize_consensus_brief(structured_response)
+        consensus_brief = (
+            _normalize_workflow_handoff(structured_response, compact_ending)
+            if workflow_handoff
+            else (
+                _normalize_accessibility_handoff(structured_response, compact_ending)
+                if accessibility_handoff
+                else _normalize_consensus_brief(structured_response)
+            )
+        )
         if compact_ending and "compact_ending" not in consensus_brief:
             raise ValueError("Structured response omitted the Decision Check")
         if not _has_meaningful_consensus_brief(consensus_brief):
@@ -333,7 +519,39 @@ Requirements:
             e,
         )
 
-    fallback_prompt = f"""Based on the following expert discussion, provide a consensus answer to the original query.
+    if workflow_handoff:
+        fallback_prompt = f"""Create a short AI workflow handoff from this request and discussion.
+
+Original Query: {query}
+
+Discussion Transcript:
+{transcript_text}
+
+Return only these sections: Task Packet, Review Checklist, Resume Checkpoint, Success Measure.
+Give the actual packet and checks, not advice to create them. Ground checks in supplied evidence;
+mark missing evidence pending. Do not invent paths, hashes, baselines, provider policies, or checks.
+State that tool permissions must enforce agent boundaries and that submitted text goes to the
+hosted model provider. Keep each section brief."""
+        fallback_system_prompt = """You are a concise moderator for AI Workflow & Delegation. Synthesize the advisors into an immediately usable handoff. Distinguish model requests from delegated-agent tools, preserve uncertainty, and do not claim unverified controls or evidence. Do not treat AI agreement as independent verification."""
+    elif accessibility_handoff:
+        fallback_prompt = f"""Create a usable Accessibility & Effort starter from this request and discussion.
+
+Original Query: {query}
+
+Discussion Transcript:
+{transcript_text}
+
+Return only these sections: Reusable Starter, Resume Checkpoint, Dictation Fallback, First Trial.
+Give the actual voice-friendly template and exact compact checkpoint. Use placeholders for unknown
+details. Avoid product or platform claims, do not require typing, and do not invent storage or alias
+setup. If dictation garbles one field, preserve the checkpoint and recover only that field. If no
+user choice blocks a small first trial, do not ask a question. Add one compact Decision Check after
+the four sections only; do not repeat their content. Ask at most one essential question, and only
+when its answer blocks the first trial. Otherwise say 'No decision needed yet.'"""
+        fallback_system_prompt = """You are a concise Accessibility & Effort moderator. Return an actionable, low-interaction starter and recovery plan. Preserve the user's control and uncertainty. Do not repeat advisor closing points or recommend unverified tools. Do not require typing or invent saved locations, aliases, or configured capabilities."""
+        fallback_system_prompt += f"\n\n{ACCESSIBILITY_CAPABILITY_INSTRUCTIONS}"
+    else:
+        fallback_prompt = f"""Based on the following expert discussion, provide a consensus answer to the original query.
 
 Original Query: {query}
 
@@ -342,7 +560,7 @@ Discussion Transcript:
 
 Provide a clear, actionable consensus that synthesizes the experts' insights."""
 
-    fallback_system_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors. Your role is to:
+        fallback_system_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors. Your role is to:
 1. Identify key points of agreement
 2. Note any important differences in perspective
 3. Provide actionable conclusions
@@ -359,10 +577,92 @@ Be concise but comprehensive."""
             fallback_system_prompt,
             model=synthesis_model,
         )
-        return response.strip(), None
+        answer = response.strip()
+        if not answer:
+            raise ValueError("Plain-text synthesis was empty")
+        return answer, None
     except (httpx.HTTPError, ValueError) as e:
         logger.error(f"Error generating consensus: {e}")
         raise
+
+
+def _normalize_workflow_handoff(
+    payload: dict[str, Any], compact_ending: bool
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("Workflow handoff must be an object")
+
+    def required_text(value: Any, label: str, max_length: int) -> str:
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or len(value.strip()) > max_length
+        ):
+            raise ValueError(f"Workflow handoff has an invalid {label}")
+        return value.strip()
+
+    raw_checks = payload.get("review_checklist")
+    if not isinstance(raw_checks, list) or not 2 <= len(raw_checks) <= 4:
+        raise ValueError("Workflow handoff needs two to four review checks")
+    review_checklist = []
+    for check in raw_checks:
+        if not isinstance(check, dict):
+            raise ValueError("Workflow handoff has an invalid review check")
+        review_checklist.append(
+            {
+                key: required_text(check.get(key), f"review check {key}", 180)
+                for key in ("check", "evidence_target")
+            }
+        )
+
+    normalized: dict[str, Any] = {
+        "synthesis_format": "workflow_handoff",
+        "task_packet": required_text(payload.get("task_packet"), "task packet", 900),
+        "review_checklist": review_checklist,
+        "resume_checkpoint": required_text(
+            payload.get("resume_checkpoint"), "resume checkpoint", 500
+        ),
+        "success_measure": required_text(
+            payload.get("success_measure"), "success measure", 500
+        ),
+    }
+    if compact_ending:
+        ending = normalize_compact_ending(payload.get("compact_ending"))
+        if any(len(value) > 180 for value in ending.values()):
+            raise ValueError("Workflow Decision Check is too long")
+        normalized["compact_ending"] = ending
+    return normalized
+
+
+def _normalize_accessibility_handoff(
+    payload: dict[str, Any], compact_ending: bool
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("Accessibility handoff must be an object")
+
+    limits = {
+        "starter_template": 900,
+        "resume_checkpoint": 500,
+        "dictation_fallback": 500,
+        "first_trial": 500,
+    }
+    normalized: dict[str, Any] = {"synthesis_format": "accessibility_handoff"}
+    for key, max_length in limits.items():
+        value = payload.get(key)
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or len(value.strip()) > max_length
+        ):
+            raise ValueError(f"Accessibility handoff has an invalid {key}")
+        normalized[key] = value.strip()
+
+    if compact_ending:
+        ending = normalize_compact_ending(payload.get("compact_ending"))
+        if any(len(value) > 180 for value in ending.values()):
+            raise ValueError("Accessibility Decision Check is too long")
+        normalized["compact_ending"] = ending
+    return normalized
 
 
 def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
@@ -402,6 +702,23 @@ def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _has_meaningful_consensus_brief(consensus_brief: dict[str, Any]) -> bool:
+    if consensus_brief.get("synthesis_format") == "accessibility_handoff":
+        return all(
+            bool(consensus_brief.get(key))
+            for key in (
+                "starter_template",
+                "resume_checkpoint",
+                "dictation_fallback",
+                "first_trial",
+            )
+        )
+    if consensus_brief.get("synthesis_format") == "workflow_handoff":
+        return bool(
+            consensus_brief.get("task_packet")
+            and consensus_brief.get("review_checklist")
+            and consensus_brief.get("resume_checkpoint")
+            and consensus_brief.get("success_measure")
+        )
     if not str(consensus_brief.get("governing_insight", "")).strip():
         return False
     if _clean_string_list(consensus_brief.get("executive_summary", [])):
@@ -420,6 +737,11 @@ def _has_meaningful_consensus_brief(consensus_brief: dict[str, Any]) -> bool:
 
 
 def _structured_consensus_to_markdown(consensus_brief: dict[str, Any]) -> str:
+    if consensus_brief.get("synthesis_format") == "accessibility_handoff":
+        return _accessibility_handoff_to_markdown(consensus_brief)
+    if consensus_brief.get("synthesis_format") == "workflow_handoff":
+        return _workflow_handoff_to_markdown(consensus_brief)
+
     lines: list[str] = []
 
     governing_insight = str(consensus_brief.get("governing_insight", "")).strip()
@@ -484,4 +806,52 @@ def _structured_consensus_to_markdown(consensus_brief: dict[str, Any]) -> str:
     if consensus_brief.get("compact_ending"):
         lines.append(render_compact_ending(consensus_brief["compact_ending"]))
 
+    return "\n".join(lines).strip()
+
+
+def _workflow_handoff_to_markdown(brief: dict[str, Any]) -> str:
+    lines = [
+        "## Task Packet",
+        "",
+        brief["task_packet"],
+        "",
+        "## Review Checklist",
+        "",
+    ]
+    lines.extend(
+        f"- [ ] {item['check']} **Evidence:** {item['evidence_target']}"
+        for item in brief["review_checklist"]
+    )
+    lines.extend(
+        [
+            "",
+            "## Resume Checkpoint",
+            "",
+            brief["resume_checkpoint"],
+        ]
+    )
+    lines.extend(
+        [
+            "",
+            "## Success Measure",
+            "",
+            brief["success_measure"],
+        ]
+    )
+    if brief.get("compact_ending"):
+        lines.extend(["", render_compact_ending(brief["compact_ending"])])
+    return "\n".join(lines).strip()
+
+
+def _accessibility_handoff_to_markdown(brief: dict[str, Any]) -> str:
+    lines = []
+    for key, heading in (
+        ("starter_template", "Reusable Starter"),
+        ("resume_checkpoint", "Resume Checkpoint"),
+        ("dictation_fallback", "Dictation Fallback"),
+        ("first_trial", "First Trial"),
+    ):
+        lines.extend([f"## {heading}", "", brief[key], ""])
+    if brief.get("compact_ending"):
+        lines.append(render_compact_ending(brief["compact_ending"]))
     return "\n".join(lines).strip()
