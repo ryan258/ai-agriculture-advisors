@@ -4,26 +4,37 @@
 <div class="container">
     <aside class="sidebar" aria-label="Advisor controls">
         <div class="sidebar-header">
-            <h1>Agri Advisors</h1>
+            <h1>AI Advisors</h1>
         </div>
 
         <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading" aria-label="Advisor query form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="section-label" for="panel">Advisor Panel</label>
+            <select name="panel_id" id="panel" aria-describedby="panel-description">
+                {% for option in panels %}
+                <option value="{{ option.id }}" {% if option.id == panel.id %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+            <p id="panel-description" class="field-hint">{{ panel.description }}</p>
             <fieldset class="expert-fieldset">
                 <legend class="section-label">Select Experts</legend>
-
+                <div id="advisor-options">
                 {% for expert in experts %}
+                {% if expert.role in panel.roles %}
                 <div class="expert-checkbox">
                     <input type="checkbox" name="roles" value="{{ expert.role }}"
                            id="expert-{{ expert.role }}"
-                           {% if expert.role == 'agriculture' %}checked{% endif %}>
+                           {% if expert.role in panel.default_roles %}checked{% endif %}>
                     <label for="expert-{{ expert.role }}">{{ expert.label }}</label>
                 </div>
+                {% endif %}
                 {% endfor %}
+                </div>
             </fieldset>
+            <p id="panel-status" class="field-hint" role="status" aria-live="polite"></p>
 
             <label class="section-label" for="query">Ask the Advisors</label>
-            <textarea name="query" id="query" rows="5" placeholder="Enter your agricultural query..." aria-describedby="query-hint" required></textarea>
+            <textarea name="query" id="query" rows="5" placeholder="Enter your question..." aria-describedby="query-hint" required></textarea>
             <p id="query-hint" class="field-hint">Choose Submit Query for independent answers, or Round Table for a multi-round discussion among the selected experts.</p>
 
             <label class="section-label" for="rounds">Roundtable Rounds</label>
@@ -34,7 +45,7 @@
             </select>
             <p id="rounds-hint" class="field-hint">Used only for Round Table. More rounds create longer transcripts.</p>
 
-            <div class="suggestions" aria-label="Example queries">
+            <div id="suggestions" class="suggestions" aria-label="Example queries">
                 {% for suggestion in suggested_queries %}
                 <button type="button" class="chip" data-query="{{ suggestion.query }}" aria-label="Use example query: {{ suggestion.query }}">{{ suggestion.label }}</button>
                 {% endfor %}
@@ -70,22 +81,17 @@
         </div>
         <section id="response" tabindex="-1" aria-label="Advisor responses" aria-live="polite" aria-busy="false">
             <div class="welcome-card card">
-                <h2>Welcome to AI Agriculture Advisors</h2>
-                <p>Select one or more experts from the sidebar and enter your agricultural query.</p>
+                <h2>Welcome to AI Advisors</h2>
+                <p>Choose a panel, select advisors, and ask your question.</p>
                 <p><strong>Submit Query</strong> - Get independent responses from each selected expert.</p>
                 <p><strong>Round Table</strong> - Start a multi-round discussion among experts (requires 2+ experts).</p>
+                <p class="field-hint">Advisors offer AI-generated perspectives. Agreement among them is not independent verification.</p>
             </div>
         </section>
     </main>
 </div>
 
-<script>
-document.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-        const queryInput = document.getElementById('query');
-        queryInput.value = chip.dataset.query || '';
-        queryInput.focus();
-    });
-});
-</script>
+<script id="panel-data" type="application/json">{{ panels | tojson }}</script>
+<script id="advisor-data" type="application/json">{{ experts | tojson }}</script>
+<script src="/static/js/panels.js" defer></script>
 {% endblock %}

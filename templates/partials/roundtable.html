@@ -16,7 +16,7 @@
         {% else %}
         <button class="btn outline save-btn"
                 hx-post="/save"
-                hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", roundtable_data: JSON.stringify({{ {"transcript": transcript, "final_answer": final_answer, "consensus_brief": consensus_brief | default(None), "rounds": rounds, "roles": roles} | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
+                hx-vals='js:{query: {{ query | tojson }}, result_type: "roundtable", advisor_context: JSON.stringify({{ advisor_context | default(None) | tojson }}), roundtable_data: JSON.stringify({{ retry_state | default({"transcript": transcript, "final_answer": final_answer, "consensus_brief": consensus_brief | default(None), "rounds": rounds, "roles": roles}) | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
                 hx-swap="outerHTML"
                 hx-target=".roundtable-header"
                 aria-label="Save this roundtable discussion">
@@ -25,13 +25,41 @@
         {% endif %}
     </div>
 
+    {% include "partials/advisor_context.html" %}
+
+    {% if can_retry | default(false) %}
+    <div class="card roundtable-recovery" aria-label="Roundtable recovery">
+        <p>{{ completed_responses }} of {{ transcript | length }} advisor responses completed. Completed answers stay as written.</p>
+        <p class="field-hint">If the synthesis provider's shared capacity is full, one fallback can try another provider of the same model. If both are busy, wait and retry synthesis. The countdown is a minimum wait; it cannot predict provider recovery.</p>
+        <form hx-post="/roundtable/retry" hx-target="#response" hx-swap="innerHTML"
+              hx-indicator="#loading" hx-sync="this:drop">
+            <input type="hidden" name="state" value='{{ retry_state | tojson }}'>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {% set retry_label = 'Retry failed advisors & synthesis' if missing_responses else 'Retry synthesis' %}
+            <button type="submit" hx-disabled-elt="this" data-retry-at="{{ retry_at }}"
+                    data-retry-label="{{ retry_label }}" {% if retry_wait %}disabled data-waiting="true"{% endif %}
+                    aria-describedby="roundtable-retry-status">{{ retry_label }}</button>
+        </form>
+        <p id="roundtable-retry-status" class="field-hint" role="status" aria-live="polite">
+            {% if retry_wait %}Retry available in {{ retry_wait }} seconds. Your completed answers are kept.
+            {% else %}Retry only requests missing responses and the synthesis. Save the result to resume after a reload.{% endif %}
+        </p>
+    </div>
+    {% endif %}
+
     <div class="card">
         <h3>Discussion Transcript</h3>
         <div class="transcript-container" aria-label="Roundtable transcript">
             {% for entry in transcript %}
             <article class="transcript-message">
                 <div class="transcript-speaker">{{ entry.speaker }} <span class="round-badge">Round {{ entry.round }}</span></div>
+                {% if entry.status | default('success') == 'pending' %}
+                <p class="field-hint">Not requested yet. The discussion paused after a rate limit.</p>
+                {% elif entry.status | default('success') == 'failed' %}
+                <div class="error-message">{{ entry.failure.message }}</div>
+                {% else %}
                 <div class="transcript-text markdown-content">{{ entry.text }}</div>
+                {% endif %}
             </article>
             {% if not loop.last %}
             <hr class="transcript-divider">
@@ -41,9 +69,19 @@
     </div>
 
     <div class="card consensus-card">
-        <h3>Consensus</h3>
+        <h3>Synthesis</h3>
+        {% if synthesis_error | default(None) %}
+        <p class="error-message">{{ synthesis_error.message }}</p>
+        {% endif %}
+        {% if synthesis_stale | default(false) %}
+        <p class="field-hint">This earlier synthesis has not been updated with the retried responses.</p>
+        {% endif %}
         <div class="consensus-container">
+            {% if final_answer %}
             <div class="markdown-content">{{ final_answer }}</div>
+            {% else %}
+            <p class="field-hint">A synthesis will appear here when it completes.</p>
+            {% endif %}
         </div>
     </div>
 </div>

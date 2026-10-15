@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI Agriculture Advisors - Start Script
+# AI Advisors - Start Script
 # Usage: ./start.sh
 
 set -e
@@ -15,5 +15,5 @@ fi
 # Load port from .env or use default
 PORT=${PORT:-8123}
 
-echo "Starting AI Agriculture Advisors on port $PORT..."
+echo "Starting AI Advisors on port $PORT..."
 uv run uvicorn main:app --port $PORT

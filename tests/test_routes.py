@@ -8,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from lib.experts import build_advisor_context, expert_registry
+from lib.experts.catalog import AdvisorDefinition, ConfiguredExpert
 from lib.engine.config import get_settings
 from lib.storage import HistoryStore
 
@@ -38,7 +40,7 @@ def test_index_page(client: TestClient) -> None:
     """Test that the index page loads."""
     response = client.get("/")
     assert response.status_code == 200
-    assert "Agri Advisors" in response.text
+    assert "AI Advisors" in response.text
     assert "Agricultural Science" in response.text
 
 
@@ -501,3 +503,160 @@ def test_query_rate_limit_enforced(mock_query: AsyncMock, client: TestClient) ->
     )
 
     assert limited_response.status_code == 429
+
+
+@pytest.mark.parametrize("endpoint", ["/query", "/roundtable"])
+def test_invalid_panel_roles_do_not_call_provider(endpoint, client: TestClient) -> None:
+    csrf_token = _get_csrf_token(client)
+    with (
+        patch("main.query_experts") as query_mock,
+        patch("main.run_roundtable") as rt_mock,
+    ):
+        response = client.post(
+            endpoint,
+            data={
+                "query": "Review this",
+                "roles": ["soil", "climate"],
+                "panel_id": "software",
+                "csrf_token": csrf_token,
+            },
+        )
+    assert response.status_code == 400
+    query_mock.assert_not_called()
+    rt_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("result_type", ["query", "roundtable"])
+def test_software_generation_save_reload_and_export_snapshot(
+    result_type: str,
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    csrf_token = _get_csrf_token(client)
+    roles = ["software_architecture", "software_testing"]
+    context = build_advisor_context("software", roles)
+    provider = AsyncMock()
+    provider.generate.return_value = "Start with one module and targeted checks."
+    provider.generate_json.return_value = {
+        "governing_insight": "Start small.",
+        "executive_summary": ["One module is enough."],
+        "decision_implications": ["Deployment constraints remain unresolved."],
+        "limitations": ["The source code was not supplied."],
+    }
+    with (
+        patch("lib.experts.base.get_llm_client", return_value=provider),
+        patch(
+            "lib.services.roundtable_service.get_llm_client",
+            return_value=provider,
+        ),
+    ):
+        generated = client.post(
+            f"/{result_type}",
+            data={
+                "query": "How should I structure this tool?",
+                "roles": roles,
+                "panel_id": "software",
+                "rounds": 1,
+                "csrf_token": csrf_token,
+            },
+        )
+    assert generated.status_code == 200
+    assert "Software panel" in generated.text
+    assert "software_architecture" in generated.text
+    if result_type == "roundtable":
+        assert "unresolved" in generated.text
+        prompt = provider.generate_json.await_args.args[1]
+        assert "agricultural" not in prompt
+        assert "Do not force agreement" in prompt
+
+    # Capture the real Save button payload, including the original snapshot.
+    from html.parser import HTMLParser
+
+    class SaveButtonParser(HTMLParser):
+        payload = ""
+
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if values.get("hx-post") == "/save":
+                self.payload = values["hx-vals"]
+
+    parser = SaveButtonParser()
+    parser.feed(generated.text)
+    context_json = parser.payload.split("advisor_context: JSON.stringify(", 1)[1].split(
+        "), csrf_token:" if result_type == "query" else "), roundtable_data:",
+        1,
+    )[0]
+    assert json.loads(context_json) == context
+    monkeypatch.setitem(
+        expert_registry,
+        roles[0],
+        ConfiguredExpert(
+            AdvisorDefinition(
+                role=roles[0],
+                label="Changed advisor",
+                system_prompt="New instructions",
+                limitations="New limits",
+            )
+        ),
+    )
+    data = {
+        "query": "How should I structure this tool?",
+        "result_type": result_type,
+        "csrf_token": csrf_token,
+        "advisor_context": context_json,
+    }
+    if result_type == "query":
+        data["responses"] = json.dumps(
+            [
+                {"role": role, "label": item["label"], "response": "Start small."}
+                for role, item in zip(roles, context["advisors"])
+            ]
+        )
+    else:
+        data["roundtable_data"] = json.dumps(
+            {
+                "roles": roles,
+                "rounds": 1,
+                "transcript": [],
+                "final_answer": "Start small.",
+            }
+        )
+    response = client.post("/save", data=data)
+    assert "Saved" in response.text
+    saved_id = main.history_store.get_history()[0]["id"]
+    saved = main.history_store.get_result_by_id(saved_id)
+    assert saved["advisor_context"] == context
+    for path in [
+        f"/result/{saved_id}",
+        f"/export/{saved_id}",
+        f"/export/{saved_id}/brief",
+    ]:
+        replay = client.get(path)
+        assert replay.status_code == 200
+        assert "Software Architecture Advisor" in replay.text
+        assert "Changed advisor" not in replay.text
+        assert (
+            "Advisor definitions" in replay.text or "Advisor Definitions" in replay.text
+        )
+
+
+def test_legacy_history_has_no_invented_advisor_snapshot(client: TestClient) -> None:
+    saved_id = main.history_store.save_result(
+        query="Old farm question",
+        experts=["agriculture"],
+        responses=[
+            {
+                "role": "agriculture",
+                "label": "Original farm advisor",
+                "response": "Old answer",
+            }
+        ],
+    )
+    for path in [
+        f"/result/{saved_id}",
+        f"/export/{saved_id}",
+        f"/export/{saved_id}/brief",
+    ]:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "definitions were not captured" in response.text

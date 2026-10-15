@@ -1,4 +1,4 @@
-"""AI Agriculture Advisors - FastAPI Application."""
+"""AI Advisors - FastAPI Application."""
 
 import json
 import logging
@@ -17,13 +17,22 @@ from slowapi.util import get_remote_address
 
 from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
-from lib.experts import get_all_experts
+from lib.experts import (
+    DEFAULT_PANEL_ID,
+    build_advisor_context,
+    get_all_experts,
+    get_all_panels,
+    get_panel,
+)
+from lib.experts.catalog import validate_advisor_context
 from lib.services import (
     build_executive_brief_html,
     build_executive_brief_markdown,
     query_experts,
     run_roundtable,
+    retry_roundtable,
 )
+from lib.services.roundtable_state import roundtable_view
 from lib.storage import history_store
 from lib.utils import setup_logging
 
@@ -34,24 +43,6 @@ logger = logging.getLogger(__name__)
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 CSRF_COOKIE_NAME = "csrf_token"
-SUGGESTED_QUERIES = (
-    {
-        "label": "Soil fertility",
-        "query": "How do I improve soil fertility organically?",
-    },
-    {
-        "label": "Drip irrigation",
-        "query": "What are the best practices for drip irrigation?",
-    },
-    {
-        "label": "Climate impact",
-        "query": "Explain the impact of climate change on wheat yield.",
-    },
-    {
-        "label": "IPM for corn",
-        "query": "Integrated Pest Management for corn.",
-    },
-)
 ROUNDTABLE_ROUND_OPTIONS = (1, 2, 3, 4, 5)
 
 
@@ -77,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
     # Startup
     get_settings()
-    logger.info("AI Agriculture Advisors started successfully")
+    logger.info("AI Advisors started successfully")
     yield
     # Shutdown
     await get_llm_client().close()
@@ -85,8 +76,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 # Initialize FastAPI
 app = FastAPI(
-    title="AI Agriculture Advisors",
-    description="Multi-expert agricultural advisory system powered by LLMs",
+    title="AI Advisors",
+    description="Configurable AI advisor panels powered by LLMs",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -112,8 +103,10 @@ async def index(request: Request) -> HTMLResponse:
             "index.html",
             {
                 "experts": experts,
+                "panels": get_all_panels(),
+                "panel": get_panel(DEFAULT_PANEL_ID),
                 "csrf_token": csrf_token,
-                "suggested_queries": SUGGESTED_QUERIES,
+                "suggested_queries": get_panel(DEFAULT_PANEL_ID).suggested_queries,
                 "round_options": ROUNDTABLE_ROUND_OPTIONS,
             },
         )
@@ -142,6 +135,7 @@ async def query(
     query: str = Form(...),
     roles: List[str] = Form(default=[]),
     csrf_token: str = Form(...),
+    panel_id: str = Form(default=DEFAULT_PANEL_ID),
 ) -> HTMLResponse:
     """
     Query selected experts in parallel.
@@ -168,6 +162,7 @@ async def query(
         )
 
     try:
+        advisor_context = build_advisor_context(panel_id, roles)
         result = await query_experts(query, roles)
         return templates.TemplateResponse(
             request,
@@ -175,9 +170,17 @@ async def query(
             {
                 "query": query,
                 "responses": result["responses"],
+                "advisor_context": advisor_context,
                 "result_id": None,
                 "csrf_token": csrf_token,
             },
+        )
+    except ValueError as e:
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": str(e)},
+            status_code=400,
         )
     except Exception as e:
         logger.error(f"Error in query: {e}")
@@ -196,6 +199,7 @@ async def roundtable(
     roles: List[str] = Form(default=[]),
     rounds: int = Form(default=3),
     csrf_token: str = Form(...),
+    panel_id: str = Form(default=DEFAULT_PANEL_ID),
 ) -> HTMLResponse:
     """
     Run a roundtable discussion among selected experts.
@@ -222,21 +226,32 @@ async def roundtable(
         )
 
     try:
+        advisor_context = build_advisor_context(panel_id, roles)
         rounds = _normalize_rounds(rounds)
         result = await run_roundtable(query, roles, rounds)
+        view = roundtable_view(
+            {
+                **result,
+                "query": query,
+                "roles": roles,
+                "advisor_context": advisor_context,
+            }
+        )
         return templates.TemplateResponse(
             request,
             "partials/roundtable.html",
             {
-                "query": query,
-                "roles": roles,
-                "rounds": result["rounds"],
-                "transcript": result["transcript"],
-                "final_answer": result["final_answer"],
-                "consensus_brief": result.get("consensus_brief"),
+                **view,
                 "result_id": None,
                 "csrf_token": csrf_token,
             },
+        )
+    except ValueError as e:
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": str(e)},
+            status_code=400,
         )
     except Exception as e:
         logger.error(f"Error in roundtable: {e}")
@@ -244,6 +259,44 @@ async def roundtable(
             request,
             "partials/error.html",
             {"message": "An error occurred.", "details": str(e)},
+        )
+
+
+@app.post("/roundtable/retry", response_class=HTMLResponse)
+@limiter.limit("10/minute")
+async def retry_roundtable_result(
+    request: Request,
+    state: str = Form(...),
+    csrf_token: str = Form(...),
+) -> HTMLResponse:
+    """Resume the submitted discussion without making calls for completed answers."""
+    try:
+        if not _validate_csrf(request, csrf_token):
+            raise ValueError(
+                "Invalid CSRF token. Reload the saved result and try again."
+            )
+        result = await retry_roundtable(json.loads(state))
+        return templates.TemplateResponse(
+            request,
+            "partials/roundtable.html",
+            {**roundtable_view(result), "result_id": None, "csrf_token": csrf_token},
+        )
+    except (ValueError, TypeError) as error:
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {"message": str(error)},
+            headers={"HX-Retarget": "#roundtable-retry-status"},
+        )
+    except Exception:
+        logger.exception("Roundtable retry failed")
+        return templates.TemplateResponse(
+            request,
+            "partials/error.html",
+            {
+                "message": "Retry could not complete. Your existing answers are still here."
+            },
+            headers={"HX-Retarget": "#roundtable-retry-status"},
         )
 
 
@@ -285,12 +338,7 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
                 request,
                 "partials/roundtable.html",
                 {
-                    "query": result["query"],
-                    "roles": result.get("experts", []),
-                    "rounds": result.get("rounds", 0),
-                    "transcript": result.get("transcript", []),
-                    "final_answer": result.get("final_answer", ""),
-                    "consensus_brief": result.get("consensus_brief"),
+                    **roundtable_view({**result, "roles": result.get("experts", [])}),
                     "result_id": result_id,
                     "csrf_token": csrf_token,
                 },
@@ -301,6 +349,7 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
             {
                 "query": result["query"],
                 "responses": result.get("responses", []),
+                "advisor_context": result.get("advisor_context"),
                 "result_id": result_id,
                 "csrf_token": csrf_token,
             },
@@ -323,6 +372,7 @@ async def save_result(
     responses: Optional[str] = Form(default=None),
     roundtable_data: Optional[str] = Form(default=None),
     csrf_token: str = Form(...),
+    advisor_context: Optional[str] = Form(default=None),
 ) -> HTMLResponse:
     """Save a query result to persistent storage."""
     try:
@@ -335,12 +385,18 @@ async def save_result(
 
         if result_type == "roundtable" and roundtable_data:
             rt_data = json.loads(roundtable_data)
+            context_args = {}
+            if advisor_context:
+                context_args["advisor_context"] = validate_advisor_context(
+                    json.loads(advisor_context), rt_data.get("roles", [])
+                )
             result_id = history_store.save_result(
                 query=query,
                 experts=rt_data.get("roles", []),
                 responses=[],
                 result_type="roundtable",
                 roundtable_data=rt_data,
+                **context_args,
             )
             return templates.TemplateResponse(
                 request,
@@ -356,11 +412,17 @@ async def save_result(
         elif responses:
             resp_data = json.loads(responses)
             experts = [r.get("role") for r in resp_data]
+            context_args = {}
+            if advisor_context:
+                context_args["advisor_context"] = validate_advisor_context(
+                    json.loads(advisor_context), experts
+                )
             result_id = history_store.save_result(
                 query=query,
                 experts=experts,
                 responses=resp_data,
                 result_type="query",
+                **context_args,
             )
             return templates.TemplateResponse(
                 request,
@@ -402,7 +464,7 @@ async def export_result(request: Request, result_id: str) -> Response:
             content=markdown,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f"attachment; filename=agri-query-{result_id}.md"
+                "Content-Disposition": f"attachment; filename=advisor-query-{result_id}.md"
             },
         )
     except Exception as e:

@@ -12,7 +12,7 @@
         {% else %}
         <button class="btn outline save-btn"
                 hx-post="/save"
-                hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", csrf_token: {{ csrf_token | tojson }}}'
+                hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", advisor_context: JSON.stringify({{ advisor_context | default(None) | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
                 hx-swap="outerHTML"
                 hx-target=".responses-header"
                 aria-label="Save these expert responses">
@@ -20,6 +20,8 @@
         </button>
         {% endif %}
     </div>
+
+    {% include "partials/advisor_context.html" %}
 
     {% for resp in responses %}
     <div class="card response-card">

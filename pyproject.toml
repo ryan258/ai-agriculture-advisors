@@ -1,7 +1,7 @@
 [project]
-name = "ai-agriculture-advisors"
+name = "ai-advisors"
 version = "2.0.0"
-description = "Multi-expert agricultural advisory system powered by LLMs"
+description = "Configurable AI advisor panels powered by LLMs"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.109.0",

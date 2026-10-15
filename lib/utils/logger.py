@@ -1,4 +1,4 @@
-"""Logging configuration for AI Agriculture Advisors."""
+"""Logging configuration for AI Advisors."""
 
 import logging
 import sys

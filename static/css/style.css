@@ -1,4 +1,4 @@
-/* AI Agriculture Advisors - Candlelight Theme */
+/* AI Advisors - Candlelight Theme */
 /* Following CLAUDE.md specifications */
 
 :root {
@@ -21,6 +21,17 @@
 
 * {
     box-sizing: border-box;
+}
+
+.advisor-instructions {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+}
+
+.advisor-context summary {
+    cursor: pointer;
+    color: var(--accent);
 }
 
 body {

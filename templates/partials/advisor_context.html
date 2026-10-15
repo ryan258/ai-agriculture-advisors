@@ -1,0 +1,12 @@
+{% if advisor_context %}
+<details class="card advisor-context">
+    <summary>{{ advisor_context.panel.label }} panel · Advisor definitions used</summary>
+    <p class="field-hint">These instructions were captured when the result was generated.</p>
+    {% for advisor in advisor_context.advisors %}
+    <h3>{{ advisor.label }} <small>({{ advisor.role }})</small></h3>
+    <pre class="advisor-instructions">{{ advisor.system_prompt }}</pre>
+    {% endfor %}
+</details>
+{% elif result_id %}
+<p class="field-hint">Advisor definitions were not captured for this saved result.</p>
+{% endif %}
