@@ -1,15 +1,31 @@
 """Service for multi-round expert discussions."""
 
 import logging
+import time
 from typing import Any, Dict, List
 
 import httpx
 
 from lib.experts import get_expert
+from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
+from lib.experts.response_format import (
+    COMPACT_DECISION_FORMAT,
+    COMPACT_ENDING_FIELDS,
+    COMPACT_ENDING_INSTRUCTIONS,
+    normalize_compact_ending,
+    render_compact_ending,
+)
 
 from ._text_utils import clean_string_list as _clean_string_list
 from ._text_utils import coerce_to_string as _coerce_to_string
+
+from .roundtable_state import (
+    CapturedExpert,
+    failure_details,
+    normalize_roundtable_state,
+    successful_entries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,87 +97,141 @@ async def run_roundtable(
     roles: List[str],
     rounds: int = 3,
 ) -> Dict[str, Any]:
-    """
-    Run a multi-round roundtable discussion among experts.
-
-    Args:
-        query: The user's query
-        roles: List of expert role keys to participate
-        rounds: Number of discussion rounds (default: 3)
-
-    Returns:
-        Dict with transcript and final consensus answer
-    """
+    """Run a discussion, retaining completed contributions if a provider call fails."""
     if len(roles) < 2:
         return {
             "error": "At least 2 experts required for roundtable discussion",
             "transcript": [],
             "final_answer": "",
         }
+    return await retry_roundtable(
+        {
+            "query": query,
+            "roles": roles,
+            "rounds": rounds,
+            "transcript": [],
+            "final_answer": "",
+        }
+    )
 
-    transcript: List[Dict[str, str]] = []
 
-    # Run discussion rounds
-    for round_num in range(1, rounds + 1):
-        for role in roles:
-            expert = get_expert(role)
-            if not expert:
-                transcript.append(
-                    {
-                        "speaker": role,
-                        "text": f"Error: Unknown expert role '{role}'",
-                        "round": round_num,
-                    }
-                )
-                continue
-
-            # Build transcript text for context
-            transcript_text = "\n".join(
-                f"{entry['speaker']}: {entry['text']}" for entry in transcript
-            )
-
-            try:
-                response = await expert.contribute_to_discussion(
-                    query=query,
-                    transcript=transcript_text,
-                    round_num=round_num,
-                )
-                transcript.append(
-                    {
-                        "speaker": expert.label,
-                        "text": response,
-                        "round": round_num,
-                    }
-                )
-                logger.info(
-                    f"Roundtable: {expert.label} contributed in round {round_num}"
-                )
-            except Exception as e:
-                logger.error(f"Error in roundtable from {role}: {e}")
-                transcript.append(
-                    {
-                        "speaker": expert.label,
-                        "text": f"Error: {str(e)}",
-                        "round": round_num,
-                    }
-                )
-
-    # Generate final consensus
-    final_answer, consensus_brief = await _generate_consensus(query, transcript)
-
-    return {
-        "query": query,
-        "roles": roles,
-        "rounds": rounds,
-        "transcript": transcript,
-        "final_answer": final_answer,
-        "consensus_brief": consensus_brief,
+async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
+    """Fill only missing slots, then synthesize. Never regenerate a successful answer."""
+    state = normalize_roundtable_state(value)
+    if state["retry_at"] > time.time():
+        return state
+    if (
+        all(entry["status"] == "success" for entry in state["transcript"])
+        and not state.get("synthesis_error")
+        and not state.get("synthesis_stale")
+    ):
+        return state
+    state["retry_at"] = 0
+    snapshots = {
+        item["role"]: item
+        for item in (state.get("advisor_context") or {}).get("advisors", [])
     }
+    changed = False
+    for index, entry in enumerate(state["transcript"]):
+        if entry["status"] == "success":
+            continue
+        role = entry["role"]
+        expert = (
+            CapturedExpert(snapshots[role]) if role in snapshots else get_expert(role)
+        )
+        if expert is None:
+            raise ValueError(f"Advisor definition unavailable for role: {role}")
+        prior = successful_entries(state["transcript"][:index])
+        transcript_text = "\n".join(
+            f"{item['speaker']}: {item['text']}" for item in prior
+        )
+        try:
+            response = await expert.contribute_to_discussion(
+                query=state["query"],
+                transcript=transcript_text,
+                round_num=entry["round"],
+            )
+            if not response.strip():
+                raise ValueError("Empty advisor response")
+            state["transcript"][index] = {
+                "role": role,
+                "speaker": expert.label,
+                "round": entry["round"],
+                "text": response,
+                "status": "success",
+            }
+            changed = True
+            logger.info("Roundtable: %s contributed in round %s", role, entry["round"])
+        except Exception as error:
+            failure = failure_details(error)
+            entry.update(
+                status="failed", text=f"Error: {failure['message']}", failure=failure
+            )
+            logger.warning(
+                "Roundtable contribution failed for %s: %s", role, failure["kind"]
+            )
+            if failure["kind"] == "rate_limit":
+                state["retry_at"] = failure["retry_at"]
+                state["synthesis_error"] = {
+                    "kind": "waiting",
+                    "message": "Synthesis is waiting for the rate limit to clear.",
+                }
+                state["synthesis_stale"] = bool(state.get("final_answer")) and (
+                    changed or state.get("synthesis_stale", False)
+                )
+                return state
+    if not successful_entries(state["transcript"]):
+        state["synthesis_error"] = {
+            "kind": "waiting",
+            "message": "At least one advisor response is needed before synthesis.",
+        }
+        return state
+    settings = get_settings()
+    synthesis_model = settings.openrouter_synthesis_model or settings.openrouter_model
+    state["synthesis_model"] = synthesis_model
+    compact_ending = state.get(
+        "compact_ending",
+        any(
+            COMPACT_ENDING_INSTRUCTIONS in item["system_prompt"]
+            for item in snapshots.values()
+        )
+        or any(
+            getattr(get_expert(role), "response_format", "") == COMPACT_DECISION_FORMAT
+            for role in state["roles"]
+        ),
+    )
+    state["compact_ending"] = compact_ending
+    try:
+        answer, brief = await _generate_consensus(
+            state["query"],
+            state["transcript"],
+            compact_ending=compact_ending,
+            synthesis_model=synthesis_model,
+        )
+        state.update(
+            final_answer=answer,
+            consensus_brief=brief,
+            synthesis_error=None,
+            synthesis_stale=False,
+        )
+    except Exception as error:
+        failure = failure_details(error)
+        state["synthesis_error"] = failure
+        state["synthesis_stale"] = bool(state.get("final_answer")) and (
+            changed or state.get("synthesis_stale", False)
+        )
+        if failure["kind"] == "rate_limit":
+            state["retry_at"] = failure["retry_at"]
+        logger.warning("Roundtable synthesis failed: %s", failure["kind"])
+    return state
 
 
 async def _generate_consensus(
     query: str,
     transcript: List[Dict[str, str]],
+    *,
+    compact_ending: bool = False,
+    synthesis_model: str | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """
     Generate a consensus summary from the discussion.
@@ -173,13 +243,22 @@ async def _generate_consensus(
     Returns:
         Rendered markdown summary plus structured consensus payload when available
     """
+    completed = successful_entries(transcript)
     transcript_text = "\n".join(
-        f"{entry['speaker']}: {entry['text']}" for entry in transcript
+        f"{entry['speaker']}: {entry['text']}" for entry in completed
     )
+    if len(completed) != len(transcript):
+        transcript_text = (
+            f"Only {len(completed)} of {len(transcript)} contributions completed. "
+            "State this limitation; do not infer missing advisors' views.\n\n"
+            + transcript_text
+        )
 
-    moderator_prompt = """You are a moderator synthesizing a roundtable discussion among agricultural experts.
+    moderator_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors.
 Return a structured consensus object that a reporting system can render directly.
 Keep every field concise, decision-oriented, and grounded in the discussion.
+Preserve unresolved disagreements in decision_implications and unknowns in limitations.
+Do not force agreement or treat agreement between AI personas as independent verification.
 Do not include markdown fences or commentary outside the schema."""
 
     summary_prompt = f"""Based on the following expert discussion, produce a structured consensus for the original query.
@@ -202,18 +281,53 @@ Requirements:
 - limitations: only include real uncertainty or missing evidence.
 """
 
+    schema = _ROUND_TABLE_CONSENSUS_SCHEMA
+    if compact_ending:
+        schema = {
+            **schema,
+            "required": [*schema["required"], "compact_ending"],
+            "properties": {
+                **schema["properties"],
+                "compact_ending": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [key for key, _ in COMPACT_ENDING_FIELDS],
+                    "properties": {
+                        key: {"type": "string", "minLength": 1}
+                        for key, _ in COMPACT_ENDING_FIELDS
+                    },
+                },
+            },
+        }
+        moderator_prompt += (
+            "\nPopulate compact_ending with four brief sentences: the smallest useful "
+            "recommended_next_step, the strongest_objection, the most consequential "
+            "unknowns, and one user_decision (or 'No decision needed yet'). "
+            "Do not invent evidence, objections, or decisions to fill a field. "
+            "State when no material objection or unknown is apparent within the supplied context. "
+            "Use the JSON fields, not Markdown bullets, and do not duplicate the closing points elsewhere."
+        )
+
     try:
         structured_response = await get_llm_client().generate_json(
             summary_prompt,
             moderator_prompt,
             schema_name="roundtable_consensus_brief",
-            schema=_ROUND_TABLE_CONSENSUS_SCHEMA,
+            schema=schema,
+            model=synthesis_model,
         )
         consensus_brief = _normalize_consensus_brief(structured_response)
+        if compact_ending and "compact_ending" not in consensus_brief:
+            raise ValueError("Structured response omitted the Decision Check")
         if not _has_meaningful_consensus_brief(consensus_brief):
             raise ValueError("Structured consensus was semantically empty")
         return _structured_consensus_to_markdown(consensus_brief), consensus_brief
     except (httpx.HTTPError, ValueError) as e:
+        if isinstance(e, httpx.HTTPError) and not (
+            isinstance(e, httpx.HTTPStatusError)
+            and e.response.status_code in (400, 422)
+        ):
+            raise
         logger.warning(
             "Structured consensus generation failed; falling back to plain-text synthesis: %s",
             e,
@@ -228,25 +342,31 @@ Discussion Transcript:
 
 Provide a clear, actionable consensus that synthesizes the experts' insights."""
 
-    fallback_system_prompt = """You are a moderator synthesizing a roundtable discussion among agricultural experts. Your role is to:
+    fallback_system_prompt = """You are a moderator synthesizing a roundtable discussion among the selected AI advisors. Your role is to:
 1. Identify key points of agreement
 2. Note any important differences in perspective
 3. Provide actionable conclusions
+4. Preserve unresolved disagreements and unknowns; do not force agreement
+5. Do not treat agreement between AI personas as independent verification
 
 Be concise but comprehensive."""
+    if compact_ending:
+        fallback_system_prompt += f"\n\n{COMPACT_ENDING_INSTRUCTIONS}"
 
     try:
         response = await get_llm_client().generate(
-            fallback_prompt, fallback_system_prompt
+            fallback_prompt,
+            fallback_system_prompt,
+            model=synthesis_model,
         )
         return response.strip(), None
     except (httpx.HTTPError, ValueError) as e:
         logger.error(f"Error generating consensus: {e}")
-        return f"Error generating consensus: {str(e)}", None
+        raise
 
 
 def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
-    return {
+    normalized: dict[str, Any] = {
         "governing_insight": str(payload.get("governing_insight", "")).strip(),
         "executive_summary": _clean_string_list(payload.get("executive_summary", [])),
         "key_findings": [
@@ -274,6 +394,11 @@ def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
         ],
         "limitations": _clean_string_list(payload.get("limitations", [])),
     }
+    if "compact_ending" in payload:
+        normalized["compact_ending"] = normalize_compact_ending(
+            payload["compact_ending"]
+        )
+    return normalized
 
 
 def _has_meaningful_consensus_brief(consensus_brief: dict[str, Any]) -> bool:
@@ -355,5 +480,8 @@ def _structured_consensus_to_markdown(consensus_brief: dict[str, Any]) -> str:
         for item in limitations:
             lines.append(f"- {item}")
         lines.append("")
+
+    if consensus_brief.get("compact_ending"):
+        lines.append(render_compact_ending(consensus_brief["compact_ending"]))
 
     return "\n".join(lines).strip()

@@ -72,7 +72,7 @@ async def query_experts(query: str, roles: List[str]) -> Dict[str, Any]:
 
     normalized: List[Dict[str, Any]] = []
     for role, response in zip(roles, responses):
-        if isinstance(response, Exception):
+        if isinstance(response, BaseException):
             logger.error(
                 "Unexpected error querying expert %s",
                 role,
@@ -85,7 +85,7 @@ async def query_experts(query: str, roles: List[str]) -> Dict[str, Any]:
                     "error": "Unexpected error querying expert. Check logs.",
                 }
             )
-        else:
+        elif isinstance(response, dict):
             normalized.append(response)
 
     return {
