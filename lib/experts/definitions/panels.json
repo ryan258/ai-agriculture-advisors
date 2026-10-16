@@ -89,6 +89,10 @@
       {
         "label": "Resume after interruption",
         "query": "I often stop work mid-task and return without the full conversation. Design a tiny handoff record for an AI coding task: what is done, current files, next action, open decision, and recovery command. Keep it short enough to dictate and say what should never be inferred from the note."
+      },
+      {
+        "label": "Bound a handoff",
+        "query": "Draft a handoff for one bounded task. Task: [name]. Allowed: [inputs it may read and where it may write]. Blocked: [edits, commits, publishing]. Deliverable: [one reviewable draft]. Today's change: [diff or input supplied]."
       }
     ]
   },
@@ -118,6 +122,10 @@
       {
         "label": "Find the smallest effort cut",
         "query": "A form requires repeating the same information across three steps. Suggest the smallest safe reduction in input. State what must persist if the person pauses, how they can correct an accidental selection, and what to test with keyboard and assistive technology."
+      },
+      {
+        "label": "Shrink repeated input",
+        "query": "Reduce repeated input for one recurring task. Task: [name]. Background ref: [link or None]. Goal: [one outcome]. Next: [one action]. Give a reusable starter, an exact resume checkpoint, a dictation fallback, and one small trial. Today's change: [what differs today]."
       }
     ]
   },
@@ -147,6 +155,10 @@
       {
         "label": "Check a source-backed answer",
         "query": "I will paste an answer and its cited passages. Match each consequential claim to the passage that supports it, flag unsupported leaps or missing dates, and list the smallest source check that could change the conclusion. Do not claim to open or verify links I have not supplied as text."
+      },
+      {
+        "label": "Test one claim",
+        "query": "Test one claim before I act on it. Claim: [paste claim]. Decision it blocks: [decision]. Supplied evidence (optional): Source label: [label or not supplied]. Passage: [paste relevant text or not supplied]. Treat a URL or file path as a reference, not contents you can open. Separate supplied facts from inference, leave missing evidence unknown, and give the smallest check that could change the conclusion. Today's change: [what is new]."
       }
     ]
   }

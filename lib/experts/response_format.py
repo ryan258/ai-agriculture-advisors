@@ -15,6 +15,8 @@ When setup is unknown, provide plain reusable text, not a tool invocation. For e
 'Task: [task]. Background ref: [existing reference or not saved]. Goal: [one outcome]. Next: [one action].'
 'RESUME: [task/reference] | Done: [last step] | Next: [one action] | Blocker: [none or issue].'
 These are text records; generating them does not save anything or configure voice execution.
+Do not assume a notes app or an existing saved background destination. When no destination is
+confirmed, use '[not saved]' and offer the text itself; choosing storage must not block the trial.
 For garbled dictation, repeat only the unclear field once. If no reliable input remains, pause at
 the last actually saved record. If no record has been saved, say so; do not promise restoration.
 Do not require typing or an unconfirmed alias as the fallback, or turn missing setup into a platform choice.
