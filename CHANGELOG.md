@@ -6,9 +6,11 @@ Notable changes to AI Advisors. Entries below 2.1.0 retain the project's earlier
 
 Release evidence and remaining acceptance checks are recorded in [release readiness](docs/RELEASE-READINESS.md). This candidate has not been published.
 
+October 16 local personal-use implementation: captured summaries before full responses, copy controls with selectable fallback, recoverable draft input, truthful scoped request status and elapsed time, full-history metadata search with pagination, separate optional personal annotations/outcomes, and saved-work resumption. The supplied-evidence starter distinguishes pasted passages from unopened links; Accessibility guidance no longer assumes a notes destination exists. No dependencies or data migration were added. Focused checks passed **144 Python / 12 headless JavaScript**, and the full locked suite passed **182 tests in 4.14s** on 2026-10-16; independent source review completed. Browser, HTMX, dictation, cold-return, and live model adherence remain separate checks for this revision.
+
 Automated acceptance before the trial corrections on 2026-10-15: 139 cases passed in the full run, followed by 3 passing route cases after a test-only snapshot-assertion correction. Targeted results for the subsequent corrections below passed (97 targeted in 2.47s; 151 full suite in 3.18s on 2026-10-15). Live output and personal acceptance are recorded separately in the readiness note.
 
-Live trial `953adc1d` completed save/reopen and both exports on 2.1.0. It exposed assumed voice/alias capabilities, a lost accessible region name after Save, and a missing Executive Brief control after replay. All three corrections are implemented in source; the saved trial remains unchanged. Shipping acceptance is on hold pending verification; no further live roundtable was run.
+Live trial `953adc1d` completed save/reopen and both exports on 2.1.0. It exposed assumed voice/alias capabilities, a lost accessible region name after Save, and a missing Executive Brief control after replay. All three corrections are implemented in source; the saved trial remains unchanged. At the October 15 checkpoint no further live roundtable had run. Subsequent October 16 observations are recorded in the month plan; personal acceptance remains open.
 
 ### Added
 

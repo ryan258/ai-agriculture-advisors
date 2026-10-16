@@ -4,6 +4,8 @@ A local tool for asking a question from several AI perspectives. Choose an advis
 
 **2.1.0 release candidate:** compact handoffs, less repeated roundtable advice, and recovery that keeps completed answers. See the [changelog](CHANGELOG.md) and [release readiness and upgrade notes](docs/RELEASE-READINESS.md) for the current evidence and remaining checks.
 
+The October 16 local implementation adds summaries before full discussions, copy controls, recoverable drafts, saved-work search, separate personal notes and outcomes, a Resume entry point, and truthful request feedback. Its focused gate passed **144 Python tests and 12 headless JavaScript tests**, and the full locked test suite (**182 passed in 4.14s** on 2026-10-16). Personal browser, dictation, and return-after-a-break acceptance remain open. Follow the [personal use and restart check](docs/PERSONAL-USE-CHECK.md) for one focused trial; the [month plan](docs/MONTH-PLAN.md) distinguishes implemented work from pending personal observations.
+
 The first live candidate trial verified saving, reopening, and both export contents, but found capability-grounding and save/replay UI issues. Corrections for all three findings are implemented; targeted regressions passed (97 passed) and the full locked suite passed (151 passed) on 2026-10-15, while live model adherence and personal dictation/resumption acceptance remain unverified. Shipping acceptance remains on hold. The original saved trial is preserved unchanged.
 
 Built-in panels:
@@ -70,6 +72,16 @@ If a provider call fails, completed advisor answers stay visible. **Retry failed
 A confirmed OpenRouter upstream shared-pool 429 during structured synthesis triggers one attempt through another provider of the same configured model. That attempt uses JSON mode with the original schema in the instructions because strict schema support can restrict routing to the saturated provider. Account/key limits do not trigger this failover. If it fails, further calls pause and a countdown uses the provider's retry guidance, with a 60-second default when none is supplied. The countdown is a minimum wait, not a guarantee that capacity will recover. Retry uses the original question, round order, and captured advisor definitions rather than the current sidebar selections; the current application's discussion and synthesis rules still apply. Successful contributions remain as written; they are not regenerated to incorporate a newly recovered earlier contribution. Synthesis uses successful contributions only and notes any gaps. Empty text synthesis remains a failure that can be retried.
 
 You can save a partial result, reopen it, and retry later. Save again after retry to keep the revised result as a new saved version. Older saved failures are supported. Exports identify incomplete synthesis instead of presenting provider error text as advice.
+
+## Find and resume your work
+
+**Saved Results** searches all saved metadata and personal notes, including older results beyond the recent list. Search is case-insensitive; pages show ten matching records at a time. Older records without a captured panel label remain readable and searchable by their question or your own notes.
+
+Open a saved result to add an optional title, your decision status, next step, last completed step, blocker, and outcome. **Save personal notes** persists those fields in a separate Chroma collection. They never rewrite the advisor transcript, captured prompts, or existing exports, and never send a model request. Blank status is unset; only your explicit Undecided or Waiting items appear in the unfinished list.
+
+**Continue saved work** remembers the most recently opened or saved result in this browser. Resume opens it without retrying advisors. Draft edits are explicitly unsaved until you choose Save personal notes. Captured generated checkpoints remain suggestions rather than proof that anything was saved or configured. Browser storage is optional; ordinary saved history remains available without it.
+
+The current question is retained locally when browser storage is available. Clear draft deliberately removes it. Result requests show waiting, completion/failure, and actual elapsed browser-request time; they do not estimate provider progress. New discussions and scoped retries still require an intentional request.
 
 ## Customize advisors and panels
 

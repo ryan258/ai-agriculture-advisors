@@ -221,3 +221,20 @@ Transcript entries now include `role` and `status` (`success`, `failed`, or `pen
 The captured prompt is the advisor profile, not the complete provider request. Current roundtable instructions and moderator rules are applied on retry; a saved snapshot does not prove the exact historical request envelope. Empty plain-text synthesis is an error and leaves the discussion retryable without regenerating successful contributions.
 
 A retried result is shown as unsaved, so **Save Result** creates a new saved version and leaves the earlier saved record intact. The retry request uses its captured state, regardless of changes to the sidebar question or panel. Validation and CSRF errors target the retry status area so the visible answers remain intact. The endpoint has the same 10/minute app limit as the initial roundtable endpoint.
+
+
+## Personal saved work
+
+These routes return HTML fragments for the local app and never call advisors.
+
+| Route | Behavior |
+| --- | --- |
+| `GET /history?q=phrase&offset=0` | Case-insensitive search across all saved metadata and personal notes, followed by stable pagination. Ten matching rows are shown. Empty search lists recent work. |
+| `GET /resume?result_id=ID` | Opens the saved return-point summary and up to three explicitly waiting/undecided items. A missing result returns a marker so the browser can forget that return ID. |
+| `POST /result/ID/notes` | Saves optional user annotations separately from generated content. |
+
+The notes form submits `title`, `status`, `next_step`, `last_step`, `blocker`, `outcome`, and the existing `csrf_token`. Blank fields are valid; omitted form fields default to blank. Status accepts blank, `undecided`, `decided`, `waiting`, or `tried`. Limits are title 200 characters, next/last/blocker 2000 each, and outcome 4000.
+
+Success returns the updated personal-notes fragment with `HX-Trigger: resultSaved`. Invalid fields return 400, a changed/missing CSRF token returns 403, a missing saved result returns 404, and storage failure returns 503. Each error fragment retains the submitted text; the browser opts in to swapping only these note fragments. The session token is renewed for a deliberate retry when needed. No error changes saved advisor content.
+
+Generated content stays in `query_history`; annotations use the additive `personal_annotations` collection with no embedding function or documents. Existing Markdown and HTML exports continue to represent the saved generated result, without mixing in later personal notes.

@@ -1,40 +1,26 @@
-# AI Advisors — Roadmap
+# AI Advisors Roadmap
 
-**Last Updated:** 2026-10-15<br>
-**Current Version:** 2.1.0<br>
-**Status:** Modular Monolith (FastAPI + Jinja2 + HTMX + ChromaDB)
+Updated October 16, 2026. Local personal tool, version 2.1.0 candidate. The goal is useful advice with less repeated input, reading, and reconstruction after a break.
 
----
+## Implemented
 
-## Current Status & Capabilities
+- Five configurable panels, individual queries and roundtables, captured advisor profiles, and scoped recovery preserving successful contributions.
+- Captured Decision Checks and structured handoffs before the expandable full discussion, including stale-synthesis warnings and visible advisor failures.
+- Copy controls with readable selected-text fallback, editable starters, retained local drafts, and deliberate clearing.
+- Truthful request status, duplicate-submission protection, and actual elapsed browser-request time.
+- Case-insensitive search across all saved metadata and personal notes, stable ten-item pagination, and readable legacy records.
+- Optional personal title, decision status, next/last step, blocker, and outcome in separate annotation storage. Generated content and exports remain unchanged.
+- A last-opened/saved Resume entry point and a short list of explicitly undecided or waiting items.
+- Evidence starter fields for a supplied source label and passage, plus Accessibility guidance that does not assume a notes destination exists.
 
-**What works:**
-- **Multi-panel advisor catalog**: 5 built-in panels (Agriculture, Software, AI Workflow & Delegation, Accessibility & Effort, Evidence & Judgment) loaded dynamically from JSON definitions (`lib/experts/definitions/`).
-- **Parallel queries & discussions**: Multi-expert parallel execution (`/query`) and multi-turn roundtable deliberation (`/roundtable`) with selectable rounds (1–5).
-- **Practical decision support & compact roundtables**: Shared 4-point Decision Check (`compact_decision`) providing concrete next steps, strongest objections, unknowns, and required user decisions across individual queries and roundtable syntheses. Decision panel roundtables keep advisor turns concise and omit repetitive closing checks, leaving a single final Decision Check for the moderator.
-- **Specialized workflow & accessibility handoffs**: AI Workflow & Delegation synthesizes bounded task packets, evidence-backed review checklists, and resumable checkpoints. Accessibility & Effort synthesizes voice-first starters, dictation fallbacks, and small measurable trials, with prompt grounding to prevent hallucinating unconfigured commands or macros.
-- **Roundtable recovery & retry**: Resilient resume flow (`/roundtable/retry`) preserving completed contributions, tracking provider rate limits with countdown timers, and providing bounded same-model JSON failover on OpenRouter shared pool exhaustion.
-- **Executive briefing & export parity**: Rendered decision-ready HTML reports (`/export/{id}/brief`) and Markdown exports (`/export/{id}`) preserving captured advisor definitions, specialized handoffs, and decision checks both immediately after Save and upon history replay.
-- **Historical context preservation**: Saved history in ChromaDB captures and validates exact advisor system prompt snapshots at runtime, ensuring legacy results remain intact even if catalog prompts evolve.
-- **Defensive execution**: CSRF double-submit protection, edge rate limiting via slowapi, DOMPurify markdown sanitization, accessible region labelling across partial swaps, and structured error partials.
-- **151 passing automated tests**: Comprehensive unit, integration, route, service, and recovery test coverage with 100% mocked provider boundaries.
+The October 16 implementation passed 144 targeted Python tests, 12 headless JavaScript tests, and the full locked test suite of 182 tests in 4.14s. Independent source review found no remaining concrete defects in the integrated scope. See [release readiness](docs/RELEASE-READINESS.md) for exact commands and evidence limits.
 
----
+## Next personal checks
 
-## Now (Immediate Priorities)
-- **Observability & telemetry**: Structured latency and provider cost/token metrics logging.
-- **History management**: Implement optional deletion/archive actions for saved ChromaDB entries.
-- **Response caching**: Cache identical query + role combinations to reduce redundant upstream calls.
+Use the [single personal pass](docs/PERSONAL-USE-CHECK.md) on one existing saved result. Check normal dictation and reading, copy behavior, saving a note, finding it later, and returning after a real break. These observations remain pending.
 
----
+The [month plan](docs/MONTH-PLAN.md) records implementation and personal acceptance separately. The next priority should come from an actual difficulty in that pass.
 
-## Next (Product Improvements)
-- **Streaming responses**: SSE (Server-Sent Events) integration for real-time streaming of advisor responses and synthesis into HTMX targets.
-- **Dynamic model selection**: UI controls for selecting OpenRouter models with speed and pricing indicators.
-- **Panel customization validation CLI**: CLI command to lint and validate custom advisor and panel JSON files.
+## Deferred unless use justifies them
 
----
-
-## Later (Platformization)
-- **Multi-tenant storage**: Optional SQLite or external database adapters for history persistence.
-- **Granular API auth**: Optional API key authentication and usage quotas for public deployment.
+Per-advisor streaming, cancellation/background jobs, provider token/cost dashboards, model selection, semantic search, caching, additional panels, document ingestion, deletion/archive management, and cross-tool integrations remain optional. The current implementation adds no accounts, deployment workflow, new database engine, runtime dependencies, or frontend build.

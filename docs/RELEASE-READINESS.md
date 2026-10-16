@@ -1,5 +1,28 @@
 # AI Advisors 2.1.0 candidate
 
+## October 16 local implementation
+
+The remaining month of engineering work is implemented locally: captured summaries before the full discussion, copy controls, draft recovery, truthful request feedback, metadata search across all history, separate personal annotations/outcomes, and saved return points. Personal notes use a lazy `personal_annotations` collection; original `query_history` documents and exports are unchanged. There is no migration or history reset.
+
+**Personal acceptance remains open.** The current implementation passed **144 targeted Python tests in 4.07s**, **12 headless JavaScript tests**, and the full locked automated suite (**182 passed in 4.14s**) on October 16, 2026. Independent source review found no further concrete defects after correcting in-flight note edit loss, hidden independent-advisor errors, and Resume failure wording. JavaScript syntax checks passed. No new browser, HTMX, dictation, assistive-technology, cold-return, or provider trial was run for these changes. The older automated and live results below retain their original dates and scope.
+
+The targeted gate was:
+
+```bash
+CHROMADB_PATH=/private/tmp/advisors-month-gate-01a14680 ./.venv/bin/python -m pytest -q tests/test_history_store.py tests/test_personal_history.py tests/test_workspace_routes.py tests/test_result_view.py tests/test_routes.py tests/test_decision_panels.py tests/test_roundtable_retry.py tests/test_panels.py tests/test_briefing_service.py
+node --test tests/test_workspace_controls.cjs
+```
+
+These checks cover old-record discovery, stable paging, metadata-only reads, separate note persistence, unchanged source bytes and exports, rejected or failed note saves retaining input, summary fallbacks, scoped recovery, request controls, clipboard fallback, and return-point handling. They do not establish personal effort savings or live model adherence.
+
+The updated local app started successfully on port 8123. Read-only checks of `/`, `/history`, `/resume`, and `/openapi.json` passed; the schema exposes the personal-notes route. These HTTP checks did not submit a discussion or save notes and do not exercise browser JavaScript.
+
+The full locked test suite (`uv run --locked pytest -q`) verified all 182 tests passed in 4.14s on October 16, 2026. GitNexus reindexed successfully (977 nodes, 2,271 edges, 49 clusters, 73 flows); its scan classified the combined tracked diff as breadth across shared routes and storage. Source review and targeted tests supplement it. Ryan's personal acceptance remains the next open step; this is not a release approval.
+
+The private stopped-app snapshot is `.local-backups/month-20261016-171319`. The [personal use and restart check](PERSONAL-USE-CHECK.md) records its contents, restore precautions, one consolidated personal trial, and the verified test suite evidence. The [month plan](MONTH-PLAN.md) keeps unobserved personal tasks unchecked.
+
+## October 15 candidate evidence
+
 Prepared on 2026-10-15 for local personal use. The candidate is based on `main` at `c2c97f8` with local changes; it is not a published release or an immutable release artifact.
 
 **Shipping status: HOLD.** Corrections for all three trial findings are implemented in source. Targeted regressions (**97 passed in 2.47s**) and the full locked automated suite (**151 passed in 3.18s**) have been verified on 2026-10-15. No second live roundtable was run, and saved trial `953adc1d` remains unchanged. Personal dictation/resumption acceptance is still unverified.
