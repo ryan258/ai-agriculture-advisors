@@ -33,7 +33,9 @@ from lib.services import (
     retry_roundtable,
 )
 from lib.services.roundtable_state import roundtable_view
+from lib.services.result_view import history_page, result_summary
 from lib.storage import history_store
+from lib.storage.history_store import ANNOTATION_STATUSES
 from lib.utils import setup_logging
 
 # Setup logging
@@ -171,6 +173,7 @@ async def query(
                 "query": query,
                 "responses": result["responses"],
                 "advisor_context": advisor_context,
+                "result_summary": result_summary({**result, "result_type": "query"}),
                 "result_id": None,
                 "csrf_token": csrf_token,
             },
@@ -244,6 +247,9 @@ async def roundtable(
             "partials/roundtable.html",
             {
                 **view,
+                "result_summary": result_summary(
+                    {**result, "result_type": "roundtable"}
+                ),
                 "result_id": None,
                 "csrf_token": csrf_token,
             },
@@ -281,7 +287,14 @@ async def retry_roundtable_result(
         return templates.TemplateResponse(
             request,
             "partials/roundtable.html",
-            {**roundtable_view(result), "result_id": None, "csrf_token": csrf_token},
+            {
+                **roundtable_view(result),
+                "result_summary": result_summary(
+                    {**result, "result_type": "roundtable"}
+                ),
+                "result_id": None,
+                "csrf_token": csrf_token,
+            },
         )
     except (ValueError, TypeError) as error:
         return templates.TemplateResponse(
@@ -303,12 +316,13 @@ async def retry_roundtable_result(
 
 
 @app.get("/history", response_class=HTMLResponse)
-async def get_history(request: Request) -> HTMLResponse:
+async def get_history(request: Request, q: str = "", offset: int = 0) -> HTMLResponse:
     """Get saved query history."""
     try:
-        history = history_store.get_history(limit=10)
+        q, offset = q.strip()[:300], max(0, offset)
+        history = history_store.get_history(limit=11, search=q, offset=offset)
         return templates.TemplateResponse(
-            request, "partials/history_list.html", {"history": history}
+            request, "partials/history_list.html", history_page(history, q, offset)
         )
     except Exception as e:
         logger.error(f"Error loading history: {e}")
@@ -317,6 +331,35 @@ async def get_history(request: Request) -> HTMLResponse:
             "partials/error.html",
             {"message": "Failed to load history.", "details": str(e)},
             status_code=500,
+        )
+
+
+@app.get("/resume", response_class=HTMLResponse)
+async def resume_saved_work(request: Request, result_id: str = "") -> HTMLResponse:
+    """Offer existing work without retrying or submitting a provider request."""
+    try:
+        result = history_store.get_result_by_id(result_id) if result_id else None
+        if result is not None:
+            result = {**result, **history_store.get_annotations(result_id)}
+        return templates.TemplateResponse(
+            request,
+            "partials/resume.html",
+            {
+                "resume_result": result,
+                "resume_missing_id": result_id if result_id and result is None else "",
+                "unfinished": history_store.get_open_items(limit=3),
+            },
+        )
+    except Exception:
+        logger.exception("Could not load the resume entry point")
+        return templates.TemplateResponse(
+            request,
+            "partials/resume.html",
+            {
+                "resume_result": None,
+                "unfinished": [],
+                "resume_error": "Saved work could not be loaded. Try Saved Results again when storage is available.",
+            },
         )
 
 
@@ -330,32 +373,45 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
         if not result:
             return templates.TemplateResponse(
                 request,
-                "partials/error.html",
-                {"message": "Result not found."},
+                "partials/missing_result.html",
+                {"result_id": result_id},
                 status_code=404,
             )
 
+        personal_context = {
+            "annotations": history_store.get_annotations(result_id),
+            "annotation_statuses": ANNOTATION_STATUSES,
+            "result_summary": result_summary(result),
+        }
         if result.get("result_type") == "roundtable":
-            return templates.TemplateResponse(
+            response = templates.TemplateResponse(
                 request,
                 "partials/roundtable.html",
                 {
                     **roundtable_view({**result, "roles": result.get("experts", [])}),
+                    **personal_context,
                     "result_id": result_id,
                     "csrf_token": csrf_token,
                 },
             )
-        return templates.TemplateResponse(
-            request,
-            "partials/responses.html",
-            {
-                "query": result["query"],
-                "responses": result.get("responses", []),
-                "advisor_context": result.get("advisor_context"),
-                "result_id": result_id,
-                "csrf_token": csrf_token,
-            },
-        )
+        else:
+            response = templates.TemplateResponse(
+                request,
+                "partials/responses.html",
+                {
+                    "query": result["query"],
+                    "responses": result.get("responses", []),
+                    "advisor_context": result.get("advisor_context"),
+                    **personal_context,
+                    "result_id": result_id,
+                    "csrf_token": csrf_token,
+                },
+            )
+        if CSRF_COOKIE_NAME not in request.cookies:
+            response.set_cookie(
+                CSRF_COOKIE_NAME, csrf_token, samesite="lax", httponly=True
+            )
+        return response
     except Exception as e:
         logger.error(f"Error loading result {result_id}: {e}")
         return templates.TemplateResponse(
@@ -364,6 +420,73 @@ async def get_result(request: Request, result_id: str) -> HTMLResponse:
             {"message": "Failed to load result.", "details": str(e)},
             status_code=500,
         )
+
+
+@app.post("/result/{result_id}/notes", response_class=HTMLResponse)
+async def update_personal_notes(
+    request: Request,
+    result_id: str,
+    title: str = Form(default=""),
+    status: str = Form(default=""),
+    next_step: str = Form(default=""),
+    last_step: str = Form(default=""),
+    blocker: str = Form(default=""),
+    outcome: str = Form(default=""),
+    csrf_token: str = Form(default=""),
+) -> HTMLResponse:
+    """Save optional user annotations separately, retaining submitted text on failure."""
+    annotations = {
+        "title": title,
+        "status": status,
+        "next_step": next_step,
+        "last_step": last_step,
+        "blocker": blocker,
+        "outcome": outcome,
+    }
+    context = {
+        "result_id": result_id,
+        "annotations": annotations,
+        "annotation_statuses": ANNOTATION_STATUSES,
+        "csrf_token": _get_or_create_csrf_token(request),
+    }
+    status_code = 200
+    try:
+        if not _validate_csrf(request, csrf_token):
+            context["notes_error"] = (
+                "Your session changed. Your notes are still here; try Save notes again."
+            )
+            status_code = 403
+        elif history_store.get_result_by_id(result_id) is None:
+            context["notes_error"] = (
+                "The saved result is no longer available. Your entered notes have not been discarded."
+            )
+            status_code = 404
+        else:
+            context["annotations"] = history_store.update_annotations(
+                result_id, annotations
+            )
+            context["notes_saved"] = True
+    except ValueError as error:
+        context["notes_error"] = str(error)
+        status_code = 400
+    except Exception:
+        logger.exception("Could not save personal notes for result %s", result_id)
+        context["notes_error"] = (
+            "Notes could not be saved. Your entered text is kept here; retry when storage is available."
+        )
+        status_code = 503
+    response = templates.TemplateResponse(
+        request,
+        "partials/personal_notes.html",
+        context,
+        status_code=status_code,
+        headers={"HX-Trigger": "resultSaved"} if status_code == 200 else None,
+    )
+    if CSRF_COOKIE_NAME not in request.cookies:
+        response.set_cookie(
+            CSRF_COOKIE_NAME, context["csrf_token"], samesite="lax", httponly=True
+        )
+    return response
 
 
 @app.post("/save", response_class=HTMLResponse)
