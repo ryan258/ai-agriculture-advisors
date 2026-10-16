@@ -19,7 +19,11 @@
     </div>
 
     {% include "partials/advisor_context.html" %}
+    {% include "partials/result_summary.html" %}
+    {% if result_id %}{% include "partials/personal_notes.html" %}{% endif %}
 
+    <details class="transcript-details" {% if not result_summary or not result_summary.checks or responses | selectattr('error') | list %}open{% endif %}>
+    <summary>Full expert responses ({{ responses | length }})</summary>
     {% for resp in responses %}
     <div class="card response-card">
         <h3>{{ resp.label }}</h3>
@@ -32,4 +36,5 @@
         {% endif %}
     </div>
     {% endfor %}
+    </details>
 </div>

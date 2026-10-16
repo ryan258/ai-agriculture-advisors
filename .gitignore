@@ -23,6 +23,9 @@ __pycache__/
 *.log
 logs/graphs/
 
+# Private local recovery snapshots
+.local-backups/
+
 # Node (legacy)
 node_modules/
 

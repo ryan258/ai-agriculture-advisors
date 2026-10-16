@@ -15,6 +15,18 @@
         }
     } catch (_) { /* Unavailable storage must not prevent asking a question. */ }
 
+    const queryBox = document.getElementById('query');
+    const draftStatus = document.getElementById('draft-status');
+    const draftKey = 'ai-advisors-draft';
+
+    function setDraftStatus(message) {
+        if (draftStatus) draftStatus.textContent = message;
+    }
+
+    function saveDraft() {
+        try { localStorage.setItem(draftKey, queryBox.value); } catch (_) {}
+    }
+
     function remember() {
         preferences.panel = selector.value;
         preferences.selections[selector.value] = Array.from(
@@ -66,9 +78,29 @@
     suggestions.addEventListener('click', event => {
         const chip = event.target.closest('button[data-query]');
         if (!chip) return;
-        const query = document.getElementById('query');
-        query.value = chip.dataset.query;
-        query.focus();
+        if (queryBox.value.trim() !== '') {
+            setDraftStatus('Kept your current draft. Clear it first to use this example.');
+            queryBox.focus();
+            return;
+        }
+        queryBox.value = chip.dataset.query;
+        saveDraft();
+        setDraftStatus('');
+        queryBox.focus();
+    });
+    queryBox.addEventListener('input', saveDraft);
+    let restoredDraft = '';
+    try { restoredDraft = localStorage.getItem(draftKey) || ''; } catch (_) {}
+    if (restoredDraft !== '' && queryBox.value.trim() === '') {
+        queryBox.value = restoredDraft;
+        setDraftStatus('Restored your unsent draft.');
+    }
+    const clearDraft = document.getElementById('clear-draft');
+    if (clearDraft) clearDraft.addEventListener('click', () => {
+        queryBox.value = '';
+        try { localStorage.removeItem(draftKey); } catch (_) {}
+        setDraftStatus('Draft cleared.');
+        queryBox.focus();
     });
     showPanel();
 })();

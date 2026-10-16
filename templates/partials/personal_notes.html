@@ -1,0 +1,35 @@
+<section class="card personal-notes" aria-label="Your personal notes">
+    <h3>Your personal notes</h3>
+    <p class="field-hint">Optional notes saved with this result. They do not change advisor answers or send anything to a model. Blank status means unset.</p>
+    {% if notes_error %}<p class="error-message" role="alert">{{ notes_error }} Your entered notes remain below.</p>{% endif %}
+    {% if notes_saved %}<p class="save-status success" role="status">Personal notes saved.</p>{% endif %}
+    <form hx-post="/result/{{ result_id }}/notes" hx-target="closest .personal-notes" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label for="note-title-{{ result_id }}">Your title</label>
+        <input id="note-title-{{ result_id }}" name="title" value="{{ annotations.title }}" maxlength="200" placeholder="Optional short name">
+        <label for="note-status-{{ result_id }}">Your decision status</label>
+        <select id="note-status-{{ result_id }}" name="status">
+            <option value="" {% if not annotations.status %}selected{% endif %}>Unset</option>
+            {% for status in annotation_statuses %}
+            {% if status %}
+            <option value="{{ status }}" {% if annotations.status == status %}selected{% endif %}>{{ status | capitalize }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+        <label for="note-next-{{ result_id }}">Next step</label>
+        <textarea id="note-next-{{ result_id }}" name="next_step" rows="2" maxlength="2000">{{ annotations.next_step }}</textarea>
+        <button type="button" class="outline copy-note" data-copy-target="note-next-{{ result_id }}">Copy next step</button>
+        <p class="field-hint copy-status" role="status" aria-live="polite"></p>
+        <details class="additional-notes" {% if annotations.last_step or annotations.blocker or annotations.outcome %}open{% endif %}>
+            <summary>Stopping point and outcome</summary>
+            <label for="note-last-{{ result_id }}">Last completed step</label>
+            <textarea id="note-last-{{ result_id }}" name="last_step" rows="2" maxlength="2000">{{ annotations.last_step }}</textarea>
+            <label for="note-blocker-{{ result_id }}">What is waiting or blocking you</label>
+            <textarea id="note-blocker-{{ result_id }}" name="blocker" rows="2" maxlength="2000">{{ annotations.blocker }}</textarea>
+            <label for="note-outcome-{{ result_id }}">What happened when you tried it</label>
+            <textarea id="note-outcome-{{ result_id }}" name="outcome" rows="2" maxlength="4000">{{ annotations.outcome }}</textarea>
+        </details>
+        <p class="field-hint note-dirty-status" role="status" aria-live="polite">{% if notes_error %}These notes have not been saved.{% else %}Edits are saved only when you choose Save personal notes.{% endif %}</p>
+        <button type="submit">Save personal notes</button>
+    </form>
+</section>

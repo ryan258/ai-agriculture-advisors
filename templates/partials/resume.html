@@ -1,0 +1,40 @@
+<div class="card resume-card"{% if resume_missing_id %} data-forget-result-id="{{ resume_missing_id }}"{% endif %}>
+    <h2>Continue saved work</h2>
+    {% if resume_error %}
+    <p class="error-message" role="alert">Saved work could not be loaded. Try again or use Saved Results.</p>
+    <button type="button" class="outline" hx-get="/resume" hx-target="#resumePanel" hx-swap="innerHTML">Try loading saved work again</button>
+    {% elif resume_result %}
+    <div data-resume-result-id="{{ resume_result.id }}">
+        <h3>{{ resume_result.title or resume_result.query }}</h3>
+        <dl class="summary-points">
+            <dt>Your decision status</dt><dd>{{ resume_result.status | capitalize if resume_result.status else 'Unset' }}</dd>
+            {% if resume_result.last_step %}<dt>Last completed step</dt><dd>{{ resume_result.last_step }}</dd>{% endif %}
+            <dt>Saved next step</dt><dd>{{ resume_result.next_step or 'No next step recorded yet.' }}</dd>
+            {% if resume_result.blocker %}<dt>Waiting on</dt><dd>{{ resume_result.blocker }}</dd>{% endif %}
+        </dl>
+        <button type="button" hx-get="/result/{{ resume_result.id }}" hx-target="#response" hx-swap="innerHTML">Resume saved result</button>
+        {% if resume_result.next_step %}
+        <div class="copy-block">
+            <label for="resume-copy-text">Saved next step</label>
+            <textarea id="resume-copy-text" class="copy-text" readonly rows="2">{{ resume_result.next_step }}</textarea>
+            <button type="button" class="outline" data-copy-target="resume-copy-text">Copy saved next step</button>
+            <p class="field-hint copy-status" role="status" aria-live="polite"></p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <p>{{ 'That saved result is no longer available. Choose another item from Saved Results.' if resume_missing_id else 'Open an item from Saved Results to establish a return point.' }}</p>
+    {% endif %}
+    {% if unfinished %}
+    <details class="unfinished-items">
+        <summary>Your undecided or waiting items ({{ unfinished | length }})</summary>
+        <p class="field-hint">Only items where you explicitly set Undecided or Waiting appear here.</p>
+        {% for item in unfinished %}
+        <button type="button" class="history-item" hx-get="/result/{{ item.id }}" hx-target="#response" hx-swap="innerHTML">
+            <span class="history-query">{{ item.title or item.query }}</span>
+            <span class="history-meta">Your status: {{ item.status | capitalize }}</span>
+        </button>
+        {% endfor %}
+    </details>
+    {% endif %}
+</div>

@@ -7,7 +7,7 @@
             <h1>AI Advisors</h1>
         </div>
 
-        <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading" aria-label="Advisor query form">
+        <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading" hx-sync="#response:drop" aria-label="Advisor query form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label class="section-label" for="panel">Advisor Panel</label>
             <select name="panel_id" id="panel" aria-describedby="panel-description">
@@ -36,6 +36,8 @@
             <label class="section-label" for="query">Ask the Advisors</label>
             <textarea name="query" id="query" rows="5" placeholder="Enter your question..." aria-describedby="query-hint" required></textarea>
             <p id="query-hint" class="field-hint">Choose Submit Query for independent answers, or Round Table for a multi-round discussion among the selected experts.</p>
+            <p id="draft-status" class="field-hint" role="status" aria-live="polite"></p>
+            <button type="button" id="clear-draft" class="secondary">Clear draft</button>
 
             <label class="section-label" for="rounds">Roundtable Rounds</label>
             <select name="rounds" id="rounds" aria-describedby="rounds-hint">
@@ -58,6 +60,7 @@
                         hx-target="#response"
                         hx-swap="innerHTML"
                         hx-indicator="#loading"
+                        hx-sync="#response:drop"
                         hx-include="#advisorForm"
                         aria-controls="response"
                         aria-describedby="rounds-hint">
@@ -68,17 +71,27 @@
 
         <div class="history-section" aria-labelledby="saved-results-label">
             <label class="section-label" id="saved-results-label">Saved Results</label>
-            <div id="historyList" hx-get="/history" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML" aria-live="polite">
+            <form id="historySearch" hx-get="/history" hx-target="#historyList" hx-swap="innerHTML" role="search" aria-label="Search saved results">
+                <label for="history-query">Find saved work</label>
+                <input type="search" id="history-query" name="q" maxlength="200" placeholder="Question, panel, or your title">
+                <div class="btn-group">
+                    <button type="submit">Search</button>
+                    <button type="button" class="outline" id="clear-history-search">Clear search</button>
+                </div>
+            </form>
+            <div id="historyList" hx-get="/history" hx-include="#historySearch" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML" aria-live="polite">
                 <!-- History items loaded via HTMX -->
             </div>
         </div>
     </aside>
 
     <main class="main" id="main-content" tabindex="-1">
+        <section id="resumePanel" hx-get="/resume" hx-trigger="load" hx-swap="innerHTML" hx-sync="this:replace" aria-label="Continue saved work"></section>
         <div id="loading" class="htmx-indicator" role="status" aria-live="polite">
-            <div class="loader"></div>
-            <p class="loading-text">Consulting experts...</p>
+            <div class="loader" aria-hidden="true"></div>
+            <p class="loading-text">Request sent. Waiting for the advisors; completed answers will appear when this request returns.</p>
         </div>
+        <p id="request-status" class="request-status field-hint" role="status" aria-live="polite"></p>
         <section id="response" tabindex="-1" aria-label="Advisor responses" aria-live="polite" aria-busy="false">
             <div class="welcome-card card">
                 <h2>Welcome to AI Advisors</h2>

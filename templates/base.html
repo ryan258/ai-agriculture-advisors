@@ -53,20 +53,8 @@
             document.querySelectorAll('.markdown-content').forEach(renderMarkdown);
         });
 
-        document.body.addEventListener('htmx:beforeRequest', function() {
-            const responseRegion = document.getElementById('response');
-            if (responseRegion) {
-                responseRegion.setAttribute('aria-busy', 'true');
-            }
-        });
-
-        document.body.addEventListener('htmx:afterRequest', function() {
-            const responseRegion = document.getElementById('response');
-            if (responseRegion) {
-                responseRegion.setAttribute('aria-busy', 'false');
-            }
-        });
     </script>
     <script src="/static/js/roundtable.js" defer></script>
+    <script src="/static/js/workspace.js" defer></script>
 </body>
 </html>

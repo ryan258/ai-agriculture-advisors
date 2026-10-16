@@ -34,6 +34,7 @@
     color: var(--accent);
 }
 
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
@@ -655,5 +656,141 @@ button.outline:hover, .btn.outline:hover {
     .roundtable-meta {
         flex-direction: column;
         gap: 4px;
+    }
+}
+
+/* Saved work, readable stopping points, and keyboard/voice-friendly controls. */
+input[type="search"],
+.personal-notes input:not([type="hidden"]) {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-3);
+    color: var(--text);
+    font: inherit;
+}
+
+button, .btn, select {
+    min-height: 44px;
+}
+
+button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+    transform: none;
+}
+
+.field-hint,
+.loading-text,
+.history-empty,
+.history-meta,
+.history-next-step {
+    color: var(--text-2);
+}
+
+.main {
+    min-width: 0;
+}
+
+.response-actions,
+.history-pagination {
+    flex-wrap: wrap;
+}
+
+.history-pagination {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.history-query,
+.history-next-step {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.history-next-step,
+.history-panel {
+    font-size: 0.8rem;
+}
+
+.summary-points {
+    margin: 12px 0;
+}
+
+.summary-points dt {
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 12px;
+}
+
+.summary-points dd {
+    margin: 0 0 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.copy-block {
+    margin-top: 16px;
+}
+
+.copy-text {
+    min-height: 72px;
+    margin: 6px 0 10px;
+}
+
+.personal-notes textarea {
+    min-height: 72px;
+    margin: 0 0 8px;
+}
+
+.personal-notes label {
+    color: var(--text-2);
+}
+
+.personal-notes .copy-note {
+    align-self: flex-start;
+}
+
+.transcript-details > summary,
+.additional-notes > summary,
+.unfinished-items > summary {
+    cursor: pointer;
+    color: var(--accent);
+    padding: 10px 0;
+    min-height: 44px;
+}
+
+.transcript-details > summary:focus-visible,
+.additional-notes > summary:focus-visible,
+.unfinished-items > summary:focus-visible {
+    outline: 2px solid var(--warning);
+    outline-offset: 2px;
+}
+
+.transcript-details[open] > summary {
+    margin-bottom: 12px;
+}
+
+.transcript-details .transcript-container {
+    max-height: none;
+    overflow: visible;
+}
+
+.request-status:empty {
+    display: none;
+}
+
+.resume-card {
+    max-width: 900px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
     }
 }

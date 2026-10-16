@@ -1,5 +1,6 @@
-<div class="response-actions">
+<div class="response-actions" data-saved-result-id="{{ result_id }}">
     <span class="save-status success">Saved</span>
+    {% if annotations is not defined %}<button type="button" class="outline" hx-get="/result/{{ result_id }}" hx-target="#response" hx-swap="innerHTML">Open saved result and notes</button>{% endif %}
     <a href="/export/{{ result_id }}/brief" class="btn outline" target="_blank" rel="noopener">Open Executive Brief</a>
     <a href="/export/{{ result_id }}" class="btn outline" download>Export Markdown</a>
 </div>

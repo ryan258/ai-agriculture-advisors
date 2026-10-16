@@ -1,0 +1,34 @@
+{% if result_summary and (result_summary.checks or result_summary.handoff) %}
+<section class="card result-summary" aria-label="Useful parts from this result">
+    <h3>Start here</h3>
+    <p class="field-hint">Extracted from this result. Advisor recommendations and checks are AI-generated; your decision is recorded separately in personal notes.</p>
+    {% if result_summary.is_stale %}
+    <p class="error-message">These points come from an earlier synthesis that has not been updated with retried answers.</p>
+    {% endif %}
+    {% for check in result_summary.checks %}
+    <div class="summary-check">
+        {% if result_summary.checks | length > 1 %}<h4>{{ check.label }}</h4>{% endif %}
+        <dl class="summary-points">
+        {% for point in check.points %}
+            <dt>{{ point.label }}</dt><dd>{{ point.text }}</dd>
+        {% endfor %}
+        </dl>
+    </div>
+    {% endfor %}
+    {% if result_summary.handoff %}
+    <dl class="summary-points">
+        {% for point in result_summary.handoff %}
+        <dt>{{ point.label }}</dt><dd>{{ point.text }}</dd>
+        {% endfor %}
+    </dl>
+    {% endif %}
+    {% if result_summary.copy_text %}
+    <div class="copy-block">
+        <label for="summary-copy-text">{{ result_summary.copy_label or 'Reusable text' }}</label>
+        <textarea id="summary-copy-text" class="copy-text" readonly rows="4">{{ result_summary.copy_text }}</textarea>
+        <button type="button" class="outline" data-copy-target="summary-copy-text">Copy {{ result_summary.copy_label or 'reusable text' }}</button>
+        <p class="field-hint copy-status" role="status" aria-live="polite"></p>
+    </div>
+    {% endif %}
+</section>
+{% endif %}

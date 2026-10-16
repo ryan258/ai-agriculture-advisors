@@ -23,13 +23,15 @@
     </div>
 
     {% include "partials/advisor_context.html" %}
+    {% include "partials/result_summary.html" %}
+    {% if result_id %}{% include "partials/personal_notes.html" %}{% endif %}
 
     {% if can_retry | default(false) %}
     <div class="card roundtable-recovery" aria-label="Roundtable recovery">
         <p>{{ completed_responses }} of {{ transcript | length }} advisor responses completed. Completed answers stay as written.</p>
         <p class="field-hint">If the synthesis provider's shared capacity is full, one fallback can try another provider of the same model. If both are busy, wait and retry synthesis. The countdown is a minimum wait; it cannot predict provider recovery.</p>
         <form hx-post="/roundtable/retry" hx-target="#response" hx-swap="innerHTML"
-              hx-indicator="#loading" hx-sync="this:drop">
+              hx-indicator="#loading" hx-sync="#response:drop">
             <input type="hidden" name="state" value='{{ retry_state | tojson }}'>
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             {% set retry_label = 'Retry failed advisors & synthesis' if missing_responses else 'Retry synthesis' %}
@@ -44,8 +46,8 @@
     </div>
     {% endif %}
 
-    <div class="card">
-        <h3>Discussion Transcript</h3>
+    <details class="card transcript-details" {% if not result_summary or not (result_summary.checks or result_summary.handoff) %}open{% endif %}>
+        <summary>Full discussion transcript ({{ transcript | length }} entries)</summary>
         <div class="transcript-container" aria-label="Roundtable transcript">
             {% for entry in transcript %}
             <article class="transcript-message">
@@ -63,7 +65,7 @@
             {% endif %}
             {% endfor %}
         </div>
-    </div>
+    </details>
 
     <div class="card consensus-card">
         <h3>Synthesis</h3>
