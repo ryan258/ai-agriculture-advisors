@@ -4,7 +4,7 @@ A local tool for asking a question from several AI perspectives. Choose an advis
 
 **2.1.0 release candidate:** compact handoffs, less repeated roundtable advice, and recovery that keeps completed answers. See the [changelog](CHANGELOG.md) and [release readiness and upgrade notes](docs/RELEASE-READINESS.md) for the current evidence and remaining checks.
 
-The first live candidate trial verified saving, reopening, and both export contents, but found capability-grounding and save/replay UI issues. Corrections for all three findings are implemented; targeted regression results and live model adherence remain unverified. Shipping acceptance remains on hold. The original saved trial is preserved unchanged.
+The first live candidate trial verified saving, reopening, and both export contents, but found capability-grounding and save/replay UI issues. Corrections for all three findings are implemented; targeted regressions passed (97 passed) and the full locked suite passed (151 passed) on 2026-10-15, while live model adherence and personal dictation/resumption acceptance remain unverified. Shipping acceptance remains on hold. The original saved trial is preserved unchanged.
 
 Built-in panels:
 
@@ -136,12 +136,12 @@ The original agricultural role keys are preserved. The old prompt-only Python su
 
 Use the project environment for checks; a global `python -m pytest` can select a different Python without FastAPI or the async test plugin. `uv sync --locked` includes the development dependencies.
 
-For compact answers, saved handoffs, exports, and retry behavior:
+For the trial-correction regression gate (decision panels, routes, experts, and retry behavior):
 
 ```bash
-uv run --locked pytest -q tests/test_decision_panels.py tests/test_briefing_service.py tests/test_roundtable_retry.py
+uv run --locked pytest -q tests/test_decision_panels.py tests/test_routes.py tests/test_experts.py tests/test_roundtable_retry.py
 ```
 
-**65 passed in 5.50s** for those three files (and **151 passed in 3.18s** across the full locked suite) on 2026-10-15. Provider calls are mocked in these tests. The [release readiness note](docs/RELEASE-READINESS.md) gives the remaining regression command and a small live acceptance trial; browser, assistive technology, and live model behavior remain separate checks.
+**97 passed in 2.47s** for those four files (`tests/test_decision_panels.py tests/test_routes.py tests/test_experts.py tests/test_roundtable_retry.py`) (and **151 passed in 3.18s** across the full locked suite) on 2026-10-15. Provider calls are mocked in these tests. The [release readiness note](docs/RELEASE-READINESS.md) gives the remaining regression command and a small live acceptance trial; browser, assistive technology, and live model behavior remain separate checks.
 
 See [API.md](API.md), [happy-path.md](happy-path.md), and `docs/architecture/` for request fields and architectural boundaries.

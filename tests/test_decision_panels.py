@@ -253,6 +253,28 @@ async def test_accessibility_grounding_reaches_standalone_and_discussion_request
         assert "generating them does not save anything" in system_prompt
 
 
+@pytest.mark.parametrize("role", get_panel("accessibility_effort").roles)
+@pytest.mark.asyncio
+async def test_accessibility_discussion_bans_working_trigger_phrasing(role):
+    advisor = get_expert(role)
+    provider = AsyncMock()
+    provider.generate.return_value = "Proposed draft wording, not configured."
+    transcript = (
+        "Voice advisor proposed: Starter voice command 'Start [task]' spoken once; "
+        "the system inserts placeholders. Say 'type checkpoint' to open a form."
+    )
+    with patch("lib.experts.base.get_llm_client", return_value=provider):
+        await advisor.contribute_to_discussion(
+            "I need a reusable starter. No command or alias is configured.",
+            transcript,
+            1,
+            compact_roundtable=True,
+        )
+    system_prompt = provider.generate.await_args.args[1]
+    assert "Do not phrase a proposal as a working trigger" in system_prompt
+    assert "proposed draft wording that is not configured" in system_prompt
+
+
 @pytest.mark.asyncio
 async def test_legacy_accessibility_retry_adds_grounding_without_changing_snapshot():
     from lib.services.roundtable_state import CapturedExpert

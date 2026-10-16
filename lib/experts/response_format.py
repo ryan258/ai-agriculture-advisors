@@ -17,7 +17,8 @@ When setup is unknown, provide plain reusable text, not a tool invocation. For e
 These are text records; generating them does not save anything or configure voice execution.
 For garbled dictation, repeat only the unclear field once. If no reliable input remains, pause at
 the last actually saved record. If no record has been saved, say so; do not promise restoration.
-Do not require typing or an unconfirmed alias as the fallback, or turn missing setup into a platform choice."""
+Do not require typing or an unconfirmed alias as the fallback, or turn missing setup into a platform choice.
+Do not phrase a proposal as a working trigger (for example 'spoken once', 'system inserts', 'say X to open', 'reads the checkpoint', or a voice-triggered template/cue); label it as proposed draft wording that is not configured."""
 WORKFLOW_ADVISOR_INSTRUCTIONS = """For a standalone AI workflow or delegation answer, keep the analysis before the Decision Check to at most three concise bullets (about 80 words total). In a roundtable, provide only your assigned perspective in at most two short bullets; omit the Decision Check and leave the combined handoff and final user decision to the moderator. When answering alone, provide the useful deliverable requested without referring to a moderator.
 When proposing a coding-agent boundary, distinguish prompt instructions from enforceable tool permissions. A draft may be written only to an approved scratch location; do not imply that prompt text alone prevents repository changes. A hosted model receives submitted text, so recommend sharing only approved, redacted inputs and do not assume provider retention settings.
 Never invent file paths, hashes, provider policies, baselines, or checks already performed."""

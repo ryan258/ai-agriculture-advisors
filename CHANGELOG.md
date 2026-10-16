@@ -6,7 +6,7 @@ Notable changes to AI Advisors. Entries below 2.1.0 retain the project's earlier
 
 Release evidence and remaining acceptance checks are recorded in [release readiness](docs/RELEASE-READINESS.md). This candidate has not been published.
 
-Automated acceptance before the trial corrections on 2026-10-15: 139 cases passed in the full run, followed by 3 passing route cases after a test-only snapshot-assertion correction. Targeted results for the subsequent corrections below are pending. Live output and personal acceptance are recorded separately in the readiness note.
+Automated acceptance before the trial corrections on 2026-10-15: 139 cases passed in the full run, followed by 3 passing route cases after a test-only snapshot-assertion correction. Targeted results for the subsequent corrections below passed (97 targeted in 2.47s; 151 full suite in 3.18s on 2026-10-15). Live output and personal acceptance are recorded separately in the readiness note.
 
 Live trial `953adc1d` completed save/reopen and both exports on 2.1.0. It exposed assumed voice/alias capabilities, a lost accessible region name after Save, and a missing Executive Brief control after replay. All three corrections are implemented in source; the saved trial remains unchanged. Shipping acceptance is on hold pending verification; no further live roundtable was run.
 
