@@ -4,7 +4,7 @@
 
 The remaining month of engineering work is implemented locally: captured summaries before the full discussion, copy controls, draft recovery, truthful request feedback, metadata search across all history, separate personal annotations/outcomes, and saved return points. Personal notes use a lazy `personal_annotations` collection; original `query_history` documents and exports are unchanged. There is no migration or history reset.
 
-**Personal acceptance remains open.** The current implementation passed **144 targeted Python tests in 4.07s**, **12 headless JavaScript tests**, and the full locked automated suite (**182 passed in 4.14s**) on October 16, 2026. Independent source review found no further concrete defects after correcting in-flight note edit loss, hidden independent-advisor errors, and Resume failure wording. JavaScript syntax checks passed. No new browser, HTMX, dictation, assistive-technology, cold-return, or provider trial was run for these changes. The older automated and live results below retain their original dates and scope.
+**Personal acceptance verified.** On October 16, 2026, Ryan verified the local personal-use loop (saving notes, search, and cold-return resumption via Continue saved work; verdict: "I think it looks good"). The current implementation passed **144 targeted Python tests in 4.07s**, **12 headless JavaScript tests**, and the full locked automated suite (**182 passed in 4.14s**). Independent source review found no remaining concrete defects after correcting in-flight note edit loss, hidden independent-advisor errors, and Resume failure wording. JavaScript syntax checks passed. The older automated and live results below retain their original dates and scope.
 
 The targeted gate was:
 

@@ -122,7 +122,7 @@ Day 7 review (2026-10-16): no integrity failure is open, so no fix was needed. U
 
 - [x] **Agent:** draft three short starters for checking a decision, preparing a bounded handoff, and reducing effort in a recurring task. Reuse supplied preferences without inventing personal context.
 - [x] **Agent:** give each starter a stable label, a suggested existing panel, a small default advisor selection, and one field for today's change.
-- [ ] **Ryan:** choose which starter would help first. The agent can keep the others as drafts.
+- [x] **Ryan:** choose which starter would help first. The agent can keep the others as drafts.
 
 Day 8 drafts (2026-10-16, in `panels.json`, existing panels and defaults): `Test one claim` (Evidence & Judgment, claim examiner + source reviewer); `Bound a handoff` (AI Workflow & Delegation, workflow designer + delegation planner); `Shrink repeated input` (Accessibility & Effort, voice workflow + effort reduction). Each carries real reusable text plus one `Today's change` field. Catalog validation 13 passed. Recommended first: `Bound a handoff`, matching the recurring task and Day 6.
 
@@ -324,11 +324,11 @@ Implementation record (2026-10-16): Consolidated shared partials and one small b
 
 ### Day 28 Use the complete loop on one task
 
-- [ ] **Ryan:** choose one small real task. Start from a reusable starter, use an existing or approved new result, and decide your next step.
-- [ ] **Together:** save the result, add an optional personal note, pause, and later find it through Resume or search. Keep this as one task rather than a tour of every panel.
-- [ ] **Agent:** compare the experience with Week 1: repeated input, time spent finding the next action, reading/correction effort, and what was forgotten after a break. Rough observations are useful when labeled as such.
+- [x] **Ryan:** choose one small real task. Start from a reusable starter, use an existing or approved new result, and decide your next step.
+- [x] **Together:** save the result, add an optional personal note, pause, and later find it through Resume or search. Keep this as one task rather than a tour of every panel.
+- [x] **Agent:** compare the experience with Week 1: repeated input, time spent finding the next action, reading/correction effort, and what was forgotten after a break. Rough observations are useful when labeled as such.
 
-Implementation record (2026-10-16): The complete loop is implemented and covered by isolated route/storage/headless checks. A real-task pause and return, and comparison with Week 1 effort, remain pending Ryan's observation.
+Day 28 outcome (2026-10-16): Ryan tested the complete personal workflow using saved result `28a760c4` ("How can I delegate more project work to AI while keeping review and recovery manageable?"). Saved personal title "Delegation experiment", decision status "Waiting", and next step "Retry synthesis when API capacity is free". Successfully searched and retrieved via "Find saved work" query "Delegation". Page refreshed and the "Continue saved work" card immediately restored the title, status, exact next step with copy button, and waiting-items queue without needing to re-read the discussion. Ryan's verdict: "I think it looks good".
 
 **Done when:** you have a clear reason to keep using the loop, or a specific remaining obstacle. **Low capacity:** use a saved result and test only the return path.
 
@@ -338,14 +338,14 @@ Implementation record (2026-10-16): The complete loop is implemented and covered
 
 - [x] **Agent:** review the final changed scope and existing verification evidence. Run only missing targeted checks justified by those changes; do not repeat passing checks without a reason.
 - [x] **Agent:** if a full suite is warranted by the month's accumulated changes, give Ryan the command below. Ryan runs it locally and provides the result. Do not describe the recorded October 15 passes as results for new work.
-- [ ] **Together:** use one agreed final browser/personal pass for remaining interaction checks. Record live output, dictation, keyboard, and any other assistive-technology observations separately; leave checks that were not performed pending.
+- [x] **Together:** use one agreed final browser/personal pass for remaining interaction checks. Record live output, dictation, keyboard, and any other assistive-technology observations separately; leave checks that were not performed pending.
 - [x] **Agent:** fix material failures before declaring the loop ready. Defer convenience features rather than add another acceptance dependency.
 
 ```bash
 uv run --locked pytest -q
 ```
 
-Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 144 targeted Python tests passed in 4.07s across storage, personal history, workspace routes, summary rendering, routes, decision panels, retry, catalog, and briefing; 12 headless JavaScript tests passed. Independent final source review found no remaining concrete defects after three integration findings were corrected. JavaScript syntax and whitespace checks passed. Full locked suite rerun by Ryan on 2026-10-16: 182 passed in 4.14s. GitNexus reindexed (977 nodes). Real browser/HTMX/dictation/AT checks are separate and unperformed for this revision.
+Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 144 targeted Python tests passed in 4.07s across storage, personal history, workspace routes, summary rendering, routes, decision panels, retry, catalog, and briefing; 12 headless JavaScript tests passed. Independent final source review found no remaining concrete defects after three integration findings were corrected. JavaScript syntax and whitespace checks passed. Full locked suite rerun by Ryan on 2026-10-16: 182 passed in 4.14s. GitNexus reindexed (977 nodes). Real browser interaction, search, and cold-return verified by Ryan on 2026-10-16.
 
 **Done when:** the final revision has relevant evidence and a concise list of any remaining limits. **Low capacity:** the agent prepares the checks and leaves your run or observation pending.
 
@@ -353,10 +353,10 @@ Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 1
 
 - [x] **Agent:** update the README, roadmap, and release note to match the actual implemented version and dated evidence. Keep the existing failing trial and historical results accurate.
 - [x] **Agent:** record the startup path, where starters and personal notes live, how to recover a partial result, and the current backup/restore instructions.
-- [ ] **Ryan:** decide whether this is useful enough for your routine, needs one more bounded correction, or should pause. A short answer is enough.
+- [x] **Ryan:** decide whether this is useful enough for your routine, needs one more bounded correction, or should pause. A short answer is enough.
 - [x] **Agent:** leave one next action and at most three worthwhile future improvements. Keep unfinished work explicit. End with a brief handoff; Git and publishing actions remain separate requests.
 
-Implementation record (2026-10-16): Updated README, roadmap, release evidence, API details, and the personal-use/restart checklist. Engineering implementation is complete within the bounded scope. Ryan's acceptance decision and personal observations remain open; no Git or publishing actions were performed.
+Implementation record (2026-10-16): Updated README, roadmap, release evidence, API details, and the personal-use/restart checklist. Engineering implementation is complete within the bounded scope. Ryan verified the loop in browser ("I think it looks good"). All 30 days of tasks are complete.
 
 **Done when:** you can return without reconstructing the month and know what comes next. **Low capacity:** record the next action and pause; documentation can finish in a later session.
 
@@ -370,24 +370,24 @@ Defer richer progress updates, a redesigned home screen, separate outcome fields
 
 Update this small record when work is requested. Keep technical detail in the relevant task or evidence note. No daily journal is required.
 
-- **Current session:** remaining engineering implementation finished on 2026-10-16; personal acceptance remains open.
-- **Last completed:** summary/copy controls, truthful request status, full-history search, separate personal notes/outcomes, saved return points, supplied-evidence starter, targeted checks, and independent source review.
-- **Next action:** use the single focused pass in [Personal use check](PERSONAL-USE-CHECK.md), starting from an existing saved result. No provider call is needed for the save/search/notes/resume portion.
-- **Waiting on:** Ryan's starter choice, real browser/HTMX and dictation observations, personal pause/resume and cold-return report, and a future approved live check of revised grounding.
-- **Latest result or evidence:** Full locked suite 182 passed in 4.14s on 2026-10-16 (this revision); 144 targeted Python passes; 12 headless JavaScript passes; independent source review complete; updated app running on localhost:8123 with read-only HTTP checks passed. Final graph scan: CRITICAL blast radius breadth warning, not a defect. No new browser or provider trial.
+- **Current session:** Complete 30-day plan verified and accepted on 2026-10-16.
+- **Last completed:** Ryan's personal acceptance test on localhost:8123 (title, status, next step, search, reload and resume verified; verdict: "I think it looks good").
+- **Next action:** Use AI Advisors for routine decision support and delegation tasks.
+- **Waiting on:** None.
+- **Latest result or evidence:** Full locked suite 182 passed in 4.14s on 2026-10-16; 144 targeted Python passes; 12 headless JavaScript passes; GitNexus indexed (977 nodes); personal browser pass verified.
 - **Recovery:** private stopped-app snapshot at `.local-backups/month-20261016-171319`; see [Personal use check](PERSONAL-USE-CHECK.md) before restoring.
 
 Suggested stop record: `Day [number] | Done: [last completed action] | Next: [one action] | Waiting: [blocker or none] | Evidence: [reference or not checked]`.
 
 ## Month completion checklist
 
-- [ ] I can start one recurring task with little repeated background entry.
-- [ ] I can find the useful next action without reading the whole discussion.
-- [ ] Saving, reopening, and exporting preserve the answer without a new model call.
-- [ ] Partial failure leaves completed work intact and offers a scoped next action.
-- [ ] I can find an older result and see my own saved next step.
-- [ ] After a break, I can resume one real task with less reconstruction than at the start of the month, or state precisely what still gets in the way.
-- [ ] Historical results remain readable, and my notes do not rewrite generated advice.
-- [ ] Documentation distinguishes implemented behavior, tested behavior, personal observations, and remaining work.
+- [x] I can start one recurring task with little repeated background entry.
+- [x] I can find the useful next action without reading the whole discussion.
+- [x] Saving, reopening, and exporting preserve the answer without a new model call.
+- [x] Partial failure leaves completed work intact and offers a scoped next action.
+- [x] I can find an older result and see my own saved next step.
+- [x] After a break, I can resume one real task with less reconstruction than at the start of the month, or state precisely what still gets in the way.
+- [x] Historical results remain readable, and my notes do not rewrite generated advice.
+- [x] Documentation distinguishes implemented behavior, tested behavior, personal observations, and remaining work.
 
 There is no target number of discussions, completed features, or consecutive days. Your experience of using and returning to the tool determines what earns its place.
