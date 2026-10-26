@@ -17,7 +17,13 @@ def _seed(store: HistoryStore, count: int = 1) -> list[str]:
         ids=ids,
         embeddings=[[0.0] for _ in ids],
         documents=[
-            json.dumps({"query": f"Question {index}", "responses": ["Original"]})
+            json.dumps(
+                {
+                    "query": f"Question {index}",
+                    "experts": ["agriculture"],
+                    "responses": [{"role": "agriculture", "response": "Original"}],
+                }
+            )
             for index in range(count)
         ],
         metadatas=[
@@ -54,7 +60,7 @@ def test_history_search_scans_all_metadata_in_bounded_batches(
     assert found[0]["title"] == "Resume the DOOR project"
     assert found[0]["panel_label"] == "Effort review"
     assert all(kwargs["include"] == ["metadatas"] for _, kwargs in calls)
-    source_calls = [kwargs for name, kwargs in calls if name == "query_history"]
+    source_calls = [kwargs for name, kwargs in calls if name == "query_history_v3"]
     assert [kwargs["offset"] for kwargs in source_calls] == [0, 100, 200]
     assert all(kwargs["limit"] == 100 for kwargs in source_calls)
     assert store.get_history(search="EFFORT REVIEW")[0]["id"] == ids[0]
@@ -134,6 +140,7 @@ def test_personal_annotations_preserve_source_and_reopen_without_embeddings(
         "last_step": "",
         "blocker": "",
         "outcome": "Tried it; less rereading",
+        "outcome_rating": "",
     }
     assert (
         reopened._collection.get(ids=[result_id], include=["documents", "metadatas"])

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib
+import pytest
+from lib.contracts import InvalidRecord
 from pathlib import Path
 
 from lib.services import build_executive_brief_markdown
@@ -18,7 +20,7 @@ def _build_fake_datetime(*timestamps: str):
         _timestamps = iter(timestamps)
 
         @classmethod
-        def now(cls) -> "_FakeDateTime":
+        def now(cls, tz=None) -> "_FakeDateTime":
             instance = cls()
             instance._value = next(cls._timestamps)
             return instance
@@ -121,11 +123,12 @@ def test_history_store_roundtable_persists_structured_consensus(tmp_path: Path) 
 
 
 def test_history_store_handles_invalid_document(tmp_path: Path) -> None:
-    """Test corrupt JSON documents fail closed instead of raising."""
+    """Test corrupt JSON documents remain distinct from missing records."""
     store = HistoryStore(str(tmp_path / "chromadb"))
     store._collection.add(
         ids=["broken123"],
         documents=["{not-json"],
+        embeddings=[[0.0]],
         metadatas=[
             {
                 "query": "Broken",
@@ -136,7 +139,8 @@ def test_history_store_handles_invalid_document(tmp_path: Path) -> None:
         ],
     )
 
-    assert store.get_result_by_id("broken123") is None
+    with pytest.raises(InvalidRecord, match="invalid JSON"):
+        store.get_result_by_id("broken123")
 
 
 def test_history_store_missing_result_returns_none(tmp_path: Path) -> None:

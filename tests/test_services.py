@@ -217,10 +217,10 @@ async def test_roundtable_falls_back_when_structured_consensus_is_semantically_e
 @pytest.mark.asyncio
 @patch("lib.services.roundtable_service.get_expert")
 @patch("lib.services.roundtable_service.get_llm_client")
-async def test_roundtable_flattens_dict_items_from_schema_violations(
+async def test_roundtable_rejects_dict_items_in_current_string_fields(
     mock_get_llm_client: AsyncMock, mock_get_expert: AsyncMock
 ) -> None:
-    """Dict items returned for string fields should be flattened before persistence."""
+    """A current malformed schema must use a labeled plain-text fallback."""
     mock_expert = AsyncMock()
     mock_expert.role = "commodities"
     mock_expert.label = "Commodities Expert"
@@ -243,13 +243,11 @@ async def test_roundtable_flattens_dict_items_from_schema_violations(
             "limitations": [],
         }
     )
+    mock_llm.generate.return_value = "Fallback with explicit unknowns"
     mock_get_llm_client.return_value = mock_llm
 
     result = await run_roundtable("Test query", ["commodities", "climate"], rounds=1)
 
-    implications = result["consensus_brief"]["decision_implications"]
-    assert implications
-    assert all(isinstance(item, str) for item in implications)
-    assert "Directional outrights vs. relative-value structures" in implications[0]
-    assert "Favor spreads with defined max loss." in implications[0]
-    assert "{'tradeoff'" not in implications[0]
+    assert result["consensus_brief"] is None
+    assert result["final_answer"] == "Fallback with explicit unknowns"
+    mock_llm.generate.assert_awaited_once()

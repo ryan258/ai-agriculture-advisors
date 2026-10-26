@@ -217,6 +217,7 @@ def test_notes_replay_and_exports_never_rewrite_source_or_call_models(
         "last_step": "Saved the source",
         "blocker": "A human observation",
         "outcome": "Personal result marker: lower effort",
+        "outcome_rating": "",
     }
 
     saved = client.post(

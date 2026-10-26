@@ -72,7 +72,7 @@ def test_query_requires_experts(client: TestClient) -> None:
     response = client.post(
         "/query", data={"query": "Test query", "csrf_token": csrf_token}
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assert "select at least one expert" in response.text.lower()
 
 
@@ -88,7 +88,7 @@ def test_query_requires_query_text(client: TestClient) -> None:
             "csrf_token": csrf_token,
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assert "enter a query" in response.text.lower()
 
 
@@ -99,7 +99,7 @@ def test_roundtable_requires_two_experts(client: TestClient) -> None:
         "/roundtable",
         data={"query": "Test query", "roles": "agriculture", "csrf_token": csrf_token},
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assert "at least 2 experts" in response.text.lower()
 
 
@@ -223,7 +223,7 @@ def test_index_handles_load_error(mock_get_all_experts, client: TestClient) -> N
 
     assert response.status_code == 500
     assert "failed to load application" in response.text.lower()
-    assert "boom" in response.text
+    assert "boom" not in response.text
     mock_get_all_experts.assert_called_once()
 
 
@@ -242,7 +242,7 @@ def test_history_endpoint_handles_store_error(client: TestClient) -> None:
 
     assert response.status_code == 500
     assert "failed to load history" in response.text.lower()
-    assert "boom" in response.text
+    assert "boom" not in response.text
 
 
 def test_export_not_found(client: TestClient) -> None:
@@ -275,7 +275,7 @@ def test_result_handles_store_error(client: TestClient) -> None:
 
     assert response.status_code == 500
     assert "failed to load result" in response.text.lower()
-    assert "boom" in response.text
+    assert "boom" not in response.text
 
 
 def test_export_handles_store_error(client: TestClient) -> None:
@@ -287,7 +287,7 @@ def test_export_handles_store_error(client: TestClient) -> None:
 
     assert response.status_code == 500
     assert "failed to export result" in response.text.lower()
-    assert "boom" in response.text
+    assert "boom" not in response.text
 
 
 @patch(
@@ -324,7 +324,7 @@ def test_brief_export_handles_store_error(client: TestClient) -> None:
 
     assert response.status_code == 500
     assert "failed to build executive brief" in response.text.lower()
-    assert "boom" in response.text
+    assert "boom" not in response.text
 
 
 def test_brief_export_renders_saved_structured_roundtable(client: TestClient) -> None:
@@ -395,7 +395,7 @@ def test_query_rejects_invalid_csrf(client: TestClient) -> None:
             "csrf_token": "invalid-token",
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 403
     assert "invalid csrf token" in response.text.lower()
 
 
@@ -664,11 +664,10 @@ def test_software_generation_save_reload_and_export_snapshot(
 
     parser = SaveButtonParser()
     parser.feed(generated.text)
-    context_json = parser.payload.split("advisor_context: JSON.stringify(", 1)[1].split(
-        "), csrf_token:" if result_type == "query" else "), roundtable_data:",
-        1,
-    )[0]
-    assert json.loads(context_json) == context
+    submitted = json.loads(parser.payload)
+    run_id = submitted["run_id"]
+    journaled = main.history_store.workspace.get("run", run_id)
+    assert journaled["state"]["advisor_context"] == context
     monkeypatch.setitem(
         expert_registry,
         roles[0],
@@ -681,28 +680,12 @@ def test_software_generation_save_reload_and_export_snapshot(
             )
         ),
     )
+    # Save reads the authoritative server checkpoint, even if the catalog changed.
     data = {
-        "query": "How should I structure this tool?",
-        "result_type": result_type,
+        "run_id": run_id,
         "csrf_token": csrf_token,
-        "advisor_context": context_json,
+        "query": "Tampered client question must be ignored",
     }
-    if result_type == "query":
-        data["responses"] = json.dumps(
-            [
-                {"role": role, "label": item["label"], "response": "Start small."}
-                for role, item in zip(roles, context["advisors"])
-            ]
-        )
-    else:
-        data["roundtable_data"] = json.dumps(
-            {
-                "roles": roles,
-                "rounds": 1,
-                "transcript": [],
-                "final_answer": "Start small.",
-            }
-        )
     response = client.post("/save", data=data)
     assert "Saved" in response.text
     saved_id = main.history_store.get_history()[0]["id"]
@@ -741,4 +724,7 @@ def test_legacy_history_has_no_invented_advisor_snapshot(client: TestClient) -> 
     ]:
         response = client.get(path)
         assert response.status_code == 200
-        assert "definitions were not captured" in response.text
+        assert (
+            "definitions were not captured" in response.text
+            or "Not captured for this legacy result" in response.text
+        )

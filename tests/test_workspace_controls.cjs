@@ -55,6 +55,7 @@ function setup({storage = {}, unavailableStorage = false, copyFails = false} = {
     const response = body.append(new Element('section', {id: 'response'}));
     const resume = body.append(new Element('section', {id: 'resumePanel'}));
     const status = body.append(new Element('p', {id: 'request-status'}));
+    const elapsed = body.append(new Element('p', {id: 'request-elapsed'}));
     const form = body.append(new Element('form', {id: 'advisorForm'}));
     const query = form.append(new Element('textarea', {id: 'query', value: 'My dictated question'}));
     const roles = form.append(new Element('input', {type: 'checkbox'}));
@@ -106,7 +107,7 @@ function setup({storage = {}, unavailableStorage = false, copyFails = false} = {
         return event;
     }
     return {
-        body, response, resume, status, query, roles, submit, roundtable, retry, historyForm, search, clearSearch,
+        body, response, resume, status, elapsed, query, roles, submit, roundtable, retry, historyForm, search, clearSearch,
         calls, clipboard, stored, fire,
         tick: seconds => { now += seconds * 1000; for (const callback of intervals.values()) callback(); },
         flush: () => { const callbacks = [...timeouts.values()]; timeouts.clear(); callbacks.forEach(callback => callback()); }
@@ -140,7 +141,8 @@ test('history and notes requests never mark the result busy; generation locks on
     await env.fire('htmx:afterRequest', {target: env.resume, xhr: {}});
     assert.equal(env.submit.disabled, true);
     env.tick(2);
-    assert.match(env.status.textContent, /Elapsed: 2 seconds/);
+    assert.match(env.elapsed.textContent, /Elapsed: 2 seconds/);
+    assert.doesNotMatch(env.status.textContent, /Elapsed: 2 seconds/, "elapsed time does not repeatedly update the live region");
     await env.fire('htmx:afterRequest', {xhr, successful: true});
     assert.equal(env.submit.disabled, false);
     assert.equal(env.retry.disabled, true, 'the existing retry countdown remains locked');
