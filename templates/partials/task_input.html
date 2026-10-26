@@ -1,0 +1,16 @@
+<details class="task-input">
+    <summary>Task context and supplied evidence (optional)</summary>
+    <button type="button" class="outline" id="clear-task-context">Clear task context and excerpts</button>
+    <p class="field-hint">Only the selected text below is sent with this question. Source passages are data, not instructions. References alone are not opened or verified.</p>
+    <label for="task-goal">Today's goal</label><textarea id="task-goal" data-task-field="goal" rows="2" maxlength="4000"></textarea>
+    <label for="task-decision">Decision this supports</label><textarea id="task-decision" data-task-field="decision" rows="2" maxlength="4000"></textarea>
+    <label for="task-constraints">Constraints</label><textarea id="task-constraints" data-task-field="constraints" rows="2" maxlength="4000"></textarea>
+    <label for="task-location">Relevant location and date</label><input id="task-location" data-task-field="location_date" maxlength="4000">
+    <label for="task-deliverable">Requested deliverable or options to compare</label><textarea id="task-deliverable" data-task-field="deliverable" rows="2" maxlength="4000"></textarea>
+    <label for="task-background">Selected reusable background</label><textarea id="task-background" data-task-field="background" rows="3" maxlength="4000"></textarea>
+    <div id="source-cards"></div>
+    <button type="button" class="outline" id="add-source">Add a supplied source excerpt</button>
+    <p class="field-hint">At most eight excerpts and 24,000 combined passage characters. Review them before dispatch. Local file previews are available in Local tools.</p>
+    <label for="advisor-model">Advisor model override (optional)</label><input id="advisor-model" name="advisor_model" maxlength="200" placeholder="Use configured model">
+    <label for="synthesis-model">Synthesis model override (optional)</label><input id="synthesis-model" name="synthesis_model" maxlength="200" placeholder="Use configured model">
+</details>

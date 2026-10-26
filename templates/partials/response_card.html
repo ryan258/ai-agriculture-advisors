@@ -1,10 +1,5 @@
-<div class="card response-card">
-    <h3>{{ label }}</h3>
-    {% if error %}
-    <div class="error-message">
-        <strong>Error:</strong> {{ error }}
-    </div>
-    {% else %}
-    <div class="markdown-content">{{ response }}</div>
-    {% endif %}
-</div>
+<article class="card response-card">
+    <h3>{{ resp.label or resp.role }}</h3>
+    {% if resp.error %}<div class="error-message"><strong>Error:</strong> {{ resp.error }}</div>
+    {% else %}<div class="markdown-content">{{ resp.response }}</div>{% endif %}
+</article>

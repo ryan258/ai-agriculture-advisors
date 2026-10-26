@@ -5,10 +5,13 @@
     <aside class="sidebar" aria-label="Advisor controls">
         <div class="sidebar-header">
             <h1>AI Advisors</h1>
+            <details><summary>Keyboard shortcuts</summary><p>Alt+Q: question. Alt+F: history search. Alt+S: save the visible notes or result. Alt+R: resume saved work. Browser or operating-system shortcuts may take priority; every action also has a visible control.</p></details>
         </div>
 
         <form id="advisorForm" hx-post="/query" hx-target="#response" hx-swap="innerHTML" hx-indicator="#loading" hx-sync="#response:drop" aria-label="Advisor query form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="background" value="true">
+            <input type="hidden" name="submission_key" id="submission-key" value="">
             <label class="section-label" for="panel">Advisor Panel</label>
             <select name="panel_id" id="panel" aria-describedby="panel-description">
                 {% for option in panels %}
@@ -42,10 +45,14 @@
             <label class="section-label" for="rounds">Roundtable Rounds</label>
             <select name="rounds" id="rounds" aria-describedby="rounds-hint">
                 {% for round_option in round_options %}
-                <option value="{{ round_option }}" {% if round_option == 3 %}selected{% endif %}>{{ round_option }} round{% if round_option != 1 %}s{% endif %}</option>
+                <option value="{{ round_option }}" {% if round_option == 1 %}selected{% endif %}>{{ round_option }} round{% if round_option != 1 %}s{% endif %}</option>
                 {% endfor %}
             </select>
-            <p id="rounds-hint" class="field-hint">Used only for Round Table. More rounds create longer transcripts.</p>
+            <p id="rounds-hint" class="field-hint">Used only for Round Table. Start with one round.</p>
+            {% include "partials/task_input.html" %}
+            <button type="button" class="outline" id="new-attempt">Allow a new run with this input</button>
+            <p id="run-plan" class="field-hint" role="status"></p>
+            <p class="field-hint">Configured models: {{ configured_models.advisor or 'not configured' }} / synthesis {{ configured_models.synthesis or 'not configured' }}. Limit {{ run_limits.calls }} calls, {{ run_limits.seconds }} seconds per attempt, {{ run_limits.output }} output tokens per call. Actual usage is recorded when returned; price is unknown.</p>
 
             <div id="suggestions" class="suggestions" aria-label="Example queries">
                 {% for suggestion in suggested_queries %}
@@ -70,10 +77,18 @@
         </form>
 
         <div class="history-section" aria-labelledby="saved-results-label">
-            <label class="section-label" id="saved-results-label">Saved Results</label>
+            <h2 class="section-label" id="saved-results-label">Saved Results</h2>
             <form id="historySearch" hx-get="/history" hx-target="#historyList" hx-swap="innerHTML" role="search" aria-label="Search saved results">
                 <label for="history-query">Find saved work</label>
                 <input type="search" id="history-query" name="q" maxlength="200" placeholder="Question, panel, or your title">
+                <details><summary>Filter saved work</summary>
+                    <label for="history-status">Your status</label><select name="status" id="history-status"><option value="">Any status</option><option value="undecided">Undecided</option><option value="waiting">Waiting</option><option value="decided">Decided</option><option value="tried">Tried</option></select>
+                    <label for="history-panel">Panel</label><select name="panel" id="history-panel"><option value="">Any panel</option>{% for option in panels %}<option>{{ option.label }}</option>{% endfor %}</select>
+                    <label for="history-tag">Tag</label><input id="history-tag" name="tag" maxlength="40">
+                    <label for="history-after">Saved on or after</label><input id="history-after" type="date" name="after">
+                    <label for="history-before">Saved on or before</label><input id="history-before" type="date" name="before">
+                    <label class="check-row"><input type="checkbox" name="archived" value="true"> Show archived work</label>
+                </details>
                 <div class="btn-group">
                     <button type="submit">Search</button>
                     <button type="button" class="outline" id="clear-history-search">Clear search</button>
@@ -87,12 +102,16 @@
 
     <main class="main" id="main-content" tabindex="-1">
         <section id="resumePanel" hx-get="/resume" hx-trigger="load" hx-swap="innerHTML" hx-sync="this:replace" aria-label="Continue saved work"></section>
+        <details class="card"><summary>Working runs and interruption recovery</summary><div id="runs-list" hx-get="/runs" hx-trigger="load, resultSaved from:body" hx-swap="innerHTML"></div></details>
+        <details class="card"><summary>Reusable starters, context, and local tools</summary><div id="personal-library" hx-get="/library" hx-trigger="load" hx-swap="innerHTML"></div></details>
+        <div id="operation-status" role="alert"></div>
         <div id="loading" class="htmx-indicator" role="status" aria-live="polite">
             <div class="loader" aria-hidden="true"></div>
             <p class="loading-text">Request sent. Waiting for the advisors; completed answers will appear when this request returns.</p>
         </div>
+        <p id="request-elapsed" class="field-hint" aria-hidden="true"></p>
         <p id="request-status" class="request-status field-hint" role="status" aria-live="polite"></p>
-        <section id="response" tabindex="-1" aria-label="Advisor responses" aria-live="polite" aria-busy="false">
+        <section id="response" tabindex="-1" aria-label="Advisor responses" aria-live="polite" aria-busy="false" {% if initial_result_id %}hx-get="/result/{{ initial_result_id }}" hx-trigger="load"{% endif %}>
             <div class="welcome-card card">
                 <h2>Welcome to AI Advisors</h2>
                 <p>Choose a panel, select advisors, and ask your question.</p>
@@ -106,5 +125,6 @@
 
 <script id="panel-data" type="application/json">{{ panels | tojson }}</script>
 <script id="advisor-data" type="application/json">{{ experts | tojson }}</script>
+<script id="run-limits" type="application/json">{{ run_limits | tojson }}</script>
 <script src="/static/js/panels.js" defer></script>
 {% endblock %}

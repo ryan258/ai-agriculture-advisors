@@ -1,0 +1,20 @@
+<div class="run-frame" data-run-id="{{ run.id }}" data-run-state="{{ run.status }}" data-completed="{{ run.completed | default(0) }}"
+    {% if run.status in ['queued', 'running'] %}hx-get="/runs/{{ run.id }}" hx-trigger="every 2s" hx-target="#response" hx-swap="innerHTML"{% endif %}>
+    <section class="card">
+        <h2>Working run: {{ run.status }}</h2>
+        <p>{{ run.state.query }}</p>
+        <p class="field-hint">{{ run.state.execution_receipts | default([]) | length }} provider attempts recorded; initial plan {{ run.state.planned_calls }} calls before fallback. Checkpoints are stored locally. A provider may still be finishing the current call when you choose Pause.</p>
+        {% if run.error %}<p class="error-message">{{ run.error }}</p>{% endif %}
+        {% if run.status in ['queued', 'running'] %}
+        <form hx-post="/runs/{{ run.id }}/pause" hx-target="#response" hx-swap="innerHTML"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="outline">Pause after current call</button></form>
+        {% elif run.status != 'complete' %}
+        <form hx-post="/runs/{{ run.id }}/resume" hx-target="#response" hx-swap="innerHTML" hx-sync="this:drop">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {% if run.ambiguous %}<label class="check-row"><input type="checkbox" name="acknowledge" value="true" required> I understand an interrupted call may already have completed remotely; retry can repeat provider work.</label>{% endif %}
+            <button type="submit" data-retry-at="{{ run.state.retry_at | default(0) }}" data-status-id="run-retry-{{ run.id }}" data-countdown-id="run-countdown-{{ run.id }}" {% if run.retry_wait %}disabled data-waiting="true"{% endif %}>Resume unfinished work</button>
+        </form>
+        <p id="run-retry-{{ run.id }}" class="field-hint" role="status">{% if run.retry_wait %}A provider minimum wait is active. Completed work is kept.{% endif %}</p><p id="run-countdown-{{ run.id }}" class="field-hint" aria-hidden="true"></p>
+        {% endif %}
+    </section>
+    {{ rendered_result | default('') | safe }}
+</div>

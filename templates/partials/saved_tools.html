@@ -1,0 +1,10 @@
+<details class="card"><summary>Follow-up, organization, and portable reports</summary>
+    <a href="/work/{{ result_id }}" class="btn outline">Stable local bookmark</a>
+    <button type="button" class="outline" hx-get="/followup/{{ result_id }}" hx-target="#response">Prepare a linked follow-up</button>
+    {% if responses | default([]) | selectattr('error') | list %}<form hx-post="/result/{{ result_id }}/retry" hx-target="#response" hx-sync="this:drop"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% include "partials/uncertain_retry.html" %}<button type="submit">Retry only failed advisors</button></form>{% endif %}
+    <form hx-post="/result/{{ result_id }}/organize" hx-target="#organization-status" hx-sync="this:drop"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="tags-{{ result_id }}">Tags (comma separated)</label><input id="tags-{{ result_id }}" name="tags" maxlength="500" value="{{ organization.tags | default([]) | join(', ') }}"><label class="check-row"><input type="checkbox" name="pinned" value="true" {% if organization.pinned %}checked{% endif %}> Pin in history</label><label class="check-row"><input type="checkbox" name="archived" value="true" {% if organization.archived %}checked{% endif %}> Archive reversibly</label><button type="submit">Save organization</button></form><div id="organization-status" role="status"></div>
+    <a href="/export/{{ result_id }}/json" class="btn outline" download>Complete JSON archive</a>
+    <a href="/export/{{ result_id }}/brief.md" class="btn outline" download>Abridged Markdown brief</a>
+    <form action="/export/{{ result_id }}/report" method="get"><label class="check-row"><input type="checkbox" name="include_notes" value="true"> Deliberately include my saved personal notes and outcome</label><button type="submit" class="outline">Download decision report</button></form>
+    <p class="field-hint">Complete exports include private questions, source passages, captured profiles, and execution receipts. Existing generated content stays unchanged.</p>
+</details>

@@ -1,0 +1,27 @@
+<section>
+    <details><summary>Fictional quality cases — prepare only</summary><p class="field-hint">Selecting a case fills visible input and makes no model call. Clear current question and task context first. Review the case, then deliberately choose Submit or Round Table. Quality is assessed separately from automated checks.</p>{% for case in quality_cases %}<button type="button" class="outline" data-use-case='{{ case | tojson }}'>{{ case.name }}</button><p class="field-hint">Observe: {{ case.expect | join('; ') }}</p>{% endfor %}</details>
+    <h3>Reusable starters</h3>
+    {% for item in starters %}<button type="button" class="outline" data-use-starter='{{ item | tojson }}'>{{ item.name }}</button>{% else %}<p class="field-hint">Save successful question wording for reuse.</p>{% endfor %}
+    <h3>Reusable background</h3>
+    {% for item in contexts %}<button type="button" class="outline" data-use-context='{{ item | tojson }}'>{{ item.name }}</button>{% else %}<p class="field-hint">Background is copied into the visible task-context field only when you choose it.</p>{% endfor %}
+    <details><summary>Save reusable text</summary>
+    <form hx-post="/library/starter" hx-target="#personal-library" hx-swap="innerHTML" hx-sync="this:drop" data-save-starter>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="button" class="outline" data-capture-current-starter>Use current question wording</button><label for="starter-name">Starter name</label><input id="starter-name" name="name" autocomplete="off" maxlength="120" required><label for="starter-content">Question wording</label><textarea id="starter-content" name="content" maxlength="24000" rows="3" required></textarea><p class="field-hint">Uses the panel and advisors currently selected in the sidebar.</p><button type="submit">Save starter</button>
+    </form>
+    <form hx-post="/library/context" hx-target="#personal-library" hx-swap="innerHTML" hx-sync="this:drop">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="context-name">Background name</label><input id="context-name" name="name" autocomplete="off" maxlength="120" required><label for="context-content">Reusable background</label><textarea id="context-content" name="content" maxlength="4000" rows="3" required></textarea><button type="submit">Save background</button>
+    </form></details>
+    <details><summary>Preview a local text excerpt</summary>
+        <form hx-post="/source/excerpt" hx-encoding="multipart/form-data" hx-target="#excerpt-preview"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="excerpt-file">Text or Markdown file, up to 100 KB</label><input type="file" id="excerpt-file" name="file" accept=".txt,.md" required><button type="submit">Preview text</button></form>
+        <div id="excerpt-preview"></div>
+    </details>
+    <details><summary>Compare two saved runs (no model calls)</summary>
+        <form hx-get="/compare" hx-target="#response"><label for="compare-left">First result</label><select id="compare-left" name="left" required>{% for item in saved_choices %}<option value="{{ item.id }}">{{ item.title or item.query }}</option>{% endfor %}</select><label for="compare-right">Second result</label><select id="compare-right" name="right" required>{% for item in saved_choices %}<option value="{{ item.id }}" {% if loop.index == 2 %}selected{% endif %}>{{ item.title or item.query }}</option>{% endfor %}</select><button type="submit">Compare saved results</button></form>
+    </details>
+    <details><summary>Calculate measured human effort</summary>
+        <form hx-post="/calculate/effort" hx-target="#effort-result"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% for field, label in [('manual','Manual baseline'),('setup','AI setup'),('review','Review'),('correction','Correction'),('recovery','Recovery')] %}<label for="effort-{{ field }}">{{ label }} minutes</label><input id="effort-{{ field }}" name="{{ field }}" type="number" step="any" min="0" max="100000" required>{% endfor %}<button type="submit">Calculate entered minutes</button></form><div id="effort-result"></div>
+    </details>
+    <details><summary>Preview an archive for additive import</summary><p class="field-hint">Exports can include private questions, sources, and prompts. Preview imports before confirming. Existing results and notes are retained.</p>
+        <form hx-post="/archive/preview" hx-encoding="multipart/form-data" hx-target="#import-preview"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="archive-file">AI Advisors JSON archive, up to 5 MB</label><input type="file" id="archive-file" name="file" accept=".json" required><button type="submit">Preview archive</button></form><div id="import-preview"></div>
+    </details>
+</section>

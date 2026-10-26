@@ -1,4 +1,4 @@
-<section class="card personal-notes" aria-label="Your personal notes">
+<section class="card personal-notes" data-result-id="{{ result_id }}" data-saved="{{ 'true' if notes_saved else 'false' }}" data-error="{{ 'true' if notes_error else 'false' }}" aria-label="Your personal notes">
     <h3>Your personal notes</h3>
     <p class="field-hint">Optional notes saved with this result. They do not change advisor answers or send anything to a model. Blank status means unset.</p>
     {% if notes_error %}<p class="error-message" role="alert">{{ notes_error }} Your entered notes remain below.</p>{% endif %}
@@ -29,6 +29,9 @@
             <label for="note-outcome-{{ result_id }}">What happened when you tried it</label>
             <textarea id="note-outcome-{{ result_id }}" name="outcome" rows="2" maxlength="4000">{{ annotations.outcome }}</textarea>
         </details>
+        <label for="note-rating-{{ result_id }}">Your outcome assessment</label>
+        <select id="note-rating-{{ result_id }}" name="outcome_rating">{% for value, label in [('', 'Unset'), ('not_tried', 'Not tried'), ('helped', 'Helped'), ('needed_correction', 'Needed correction'), ('not_useful', 'Not useful')] %}<option value="{{ value }}" {% if annotations.outcome_rating == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <button type="button" class="outline" data-discard-note-draft>Discard recovered local note draft</button>
         <p class="field-hint note-dirty-status" role="status" aria-live="polite">{% if notes_error %}These notes have not been saved.{% else %}Edits are saved only when you choose Save personal notes.{% endif %}</p>
         <button type="submit">Save personal notes</button>
     </form>

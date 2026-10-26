@@ -1,0 +1,14 @@
+{
+  "htmx-1.9.12.min.js": {
+    "sha256": "449317ade7881e949510db614991e195c3a099c4c791c24dacec55f9f4a2a452",
+    "upstream": "https://github.com/bigskysoftware/htmx/releases/tag/v1.9.12"
+  },
+  "marked-18.0.14.umd.js": {
+    "sha256": "21568877a938d2c4e7d74e27f18e60da96bb73a68809610ca39216e1efebae62",
+    "upstream": "https://github.com/markedjs/marked/releases/tag/v18.0.14"
+  },
+  "purify-3.4.17.min.js": {
+    "sha256": "cd37898f9782adf54820c413191b5691803f0f137c799d6edcfd38523b4c2c31",
+    "upstream": "https://github.com/cure53/DOMPurify/releases/tag/3.4.17"
+  }
+}

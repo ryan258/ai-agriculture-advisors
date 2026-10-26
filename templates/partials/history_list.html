@@ -22,10 +22,10 @@
 {% if offset or has_more %}
 <nav class="history-pagination" aria-label="Saved results pages">
     {% if offset %}
-    <button type="button" class="outline" hx-get="/history" hx-vals='{{ {"q": q, "offset": [0, offset - page_size] | max} | tojson }}' hx-target="#historyList" hx-swap="innerHTML">Newer matches</button>
+    <button type="button" class="outline" hx-get="/history" hx-include="#historySearch" hx-vals='{{ {"q": q, "offset": [0, offset - page_size] | max} | tojson }}' hx-target="#historyList" hx-swap="innerHTML">Newer matches</button>
     {% endif %}
     {% if has_more %}
-    <button type="button" class="outline" hx-get="/history" hx-vals='{{ {"q": q, "offset": offset + page_size} | tojson }}' hx-target="#historyList" hx-swap="innerHTML">Older matches</button>
+    <button type="button" class="outline" hx-get="/history" hx-include="#historySearch" hx-vals='{{ {"q": q, "offset": offset + page_size} | tojson }}' hx-target="#historyList" hx-swap="innerHTML">Older matches</button>
     {% endif %}
 </nav>
 {% endif %}

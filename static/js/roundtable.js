@@ -4,17 +4,19 @@
         let waiting = false;
         document.querySelectorAll('button[data-retry-at]').forEach(button => {
             const seconds = Math.max(0, Math.ceil(Number(button.dataset.retryAt) - Date.now() / 1000));
+            const status = document.getElementById(button.dataset.statusId || 'roundtable-retry-status');
+            const countdown = document.getElementById(button.dataset.countdownId || 'roundtable-retry-countdown');
             if (seconds) {
                 waiting = true;
                 button.disabled = true;
+                if (status && !button.dataset.waiting) status.textContent = 'A provider minimum wait is active. Your completed answers are kept.';
                 button.dataset.waiting = 'true';
-                const status = document.getElementById('roundtable-retry-status');
-                if (status) status.textContent = `Retry available in ${seconds} seconds. Your completed answers are kept.`;
+                if (countdown) countdown.textContent = `Retry available in ${seconds} seconds.`;
             } else if (button.dataset.waiting) {
                 button.disabled = Boolean(button.dataset.requestPending);
                 delete button.dataset.waiting;
-                const status = document.getElementById('roundtable-retry-status');
                 if (status) status.textContent = 'Ready to retry. Your completed answers will stay as written.';
+                if (countdown) countdown.textContent = '';
             }
         });
         if (!waiting && timer) { clearInterval(timer); timer = undefined; }

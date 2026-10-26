@@ -6,35 +6,30 @@
         </div>
         {% if result_id %}
         {% include "partials/saved_actions.html" %}
-        {% else %}
+        {% elif not _running | default(false) %}
         <button class="btn outline save-btn"
                 hx-post="/save"
-                hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", advisor_context: JSON.stringify({{ advisor_context | default(None) | tojson }}), csrf_token: {{ csrf_token | tojson }}}'
-                hx-swap="outerHTML"
-                hx-target=".responses-header"
+                {% if run_id %}hx-vals='{{ {"run_id": run_id, "csrf_token": csrf_token, "save_key": save_key | default(run_id)} | tojson }}'
+                {% else %}hx-vals='js:{query: {{ query | tojson }}, responses: JSON.stringify({{ responses | tojson }}), result_type: "query", advisor_context: JSON.stringify({{ advisor_context | default(None) | tojson }}), csrf_token: {{ csrf_token | tojson }}}'{% endif %}
+                hx-sync="this:drop" hx-disabled-elt="this"
+                hx-swap="innerHTML"
+                hx-target="#save-status"
                 aria-label="Save these expert responses">
             Save Result
         </button>
         {% endif %}
     </div>
 
+    <div id="save-status" role="status"></div>
+    {% include "partials/evidence.html" %}
     {% include "partials/advisor_context.html" %}
     {% include "partials/result_summary.html" %}
-    {% if result_id %}{% include "partials/personal_notes.html" %}{% endif %}
+    {% if result_id %}{% include "partials/personal_notes.html" %}{% include "partials/saved_tools.html" %}{% endif %}
 
     <details class="transcript-details" {% if not result_summary or not result_summary.checks or responses | selectattr('error') | list %}open{% endif %}>
     <summary>Full expert responses ({{ responses | length }})</summary>
     {% for resp in responses %}
-    <div class="card response-card">
-        <h3>{{ resp.label }}</h3>
-        {% if resp.error %}
-        <div class="error-message">
-            <strong>Error:</strong> {{ resp.error }}
-        </div>
-        {% else %}
-        <div class="markdown-content">{{ resp.response }}</div>
-        {% endif %}
-    </div>
+    {% include "partials/response_card.html" %}
     {% endfor %}
     </details>
 </div>

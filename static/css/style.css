@@ -3,16 +3,6 @@
 
 :root {
     /* Candlelight Dark Theme */
-    --bg: #121212;
-    --bg-2: #1A1A1A;
-    --bg-3: #242424;
-    --text: #EBD2BE;
-    --text-2: #A6ACCD;
-    --text-muted: #6B7280;
-    --accent: #A6ACCD;
-    --success: #98C379;
-    --error: #E06C75;
-    --warning: #F59E0B;
 
     /* Derived colors */
     --border: #333;
@@ -176,7 +166,7 @@ textarea:focus {
 }
 
 textarea::placeholder {
-    color: var(--text-muted);
+    color: var(--text-2);
 }
 
 select {
@@ -192,7 +182,7 @@ select {
 
 .field-hint {
     margin: -4px 0 8px 0;
-    color: var(--text-muted);
+    color: var(--text-2);
     font-size: 0.8rem;
 }
 
@@ -267,7 +257,7 @@ button.outline:hover, .btn.outline:hover {
     border-radius: 16px;
     font-size: 0.8rem;
     cursor: pointer;
-    color: var(--text-muted);
+    color: var(--text-2);
     transition: all 0.2s;
 }
 
@@ -371,7 +361,7 @@ button.outline:hover, .btn.outline:hover {
     display: flex;
     gap: 20px;
     margin: 8px 0;
-    color: var(--text-muted);
+    color: var(--text-2);
     font-size: 0.9rem;
 }
 
@@ -400,7 +390,7 @@ button.outline:hover, .btn.outline:hover {
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 400;
-    color: var(--text-muted);
+    color: var(--text-2);
 }
 
 .transcript-text {
@@ -469,7 +459,7 @@ button.outline:hover, .btn.outline:hover {
     padding: 2px 6px;
     border-radius: 3px;
     background: var(--bg-3);
-    color: var(--text-muted);
+    color: var(--text-2);
 }
 
 .history-type.roundtable {
@@ -479,11 +469,11 @@ button.outline:hover, .btn.outline:hover {
 
 .history-experts {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text-2);
 }
 
 .history-empty {
-    color: var(--text-muted);
+    color: var(--text-2);
     font-size: 0.875rem;
     padding: 10px 0;
 }
@@ -499,7 +489,7 @@ button.outline:hover, .btn.outline:hover {
 
 .error-details {
     background: var(--bg-3);
-    color: var(--text-muted);
+    color: var(--text-2);
     padding: 12px;
     border-radius: 4px;
     overflow-x: auto;
@@ -533,7 +523,7 @@ button.outline:hover, .btn.outline:hover {
 }
 
 .loading-text {
-    color: var(--text-muted);
+    color: var(--text-2);
     font-size: 0.9rem;
 }
 
@@ -794,3 +784,28 @@ button:disabled {
         transition: none !important;
     }
 }
+
+/* Shared workbench forms retain Candlelight and large practical targets. */
+html { color-scheme: dark; }
+input:not([type="checkbox"]):not([type="hidden"]), .task-input textarea {
+    width: 100%; min-height: 44px; padding: 10px 12px; margin: 6px 0 12px;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--bg-3); color: var(--text); font: inherit;
+}
+label { display: block; }
+.expert-checkbox { min-height: 44px; position: relative; }
+.expert-checkbox label { flex: 1; min-height: 44px; display: flex; align-items: center; padding: 4px; }
+.expert-checkbox input[type="checkbox"] { width: 24px; height: 24px; }
+.check-row { display: flex; gap: 12px; align-items: center; min-height: 44px; margin: 10px 0; }
+.check-row input { width: 24px; height: 24px; flex-shrink: 0; }
+.source-card { margin: 16px 0; padding: 16px; border: 1px solid var(--accent); border-radius: 6px; }
+.preserve-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.plain-response { white-space: pre-wrap; overflow-wrap: anywhere; }
+pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th, td { text-align: left; border: 1px solid var(--border); padding: 10px; overflow-wrap: anywhere; }
+caption { color: var(--text-2); text-align: left; margin: 8px 0; }
+.run-frame > section { margin-bottom: 20px; }
+.task-input > summary, #main-content details > summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--accent); }
+#dependency-status:empty, #operation-status:empty, #save-status:empty { display: none; }
+@media (max-width: 900px) { .comparison-grid { grid-template-columns: 1fr; } }

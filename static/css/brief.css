@@ -1,14 +1,4 @@
 :root {
-    --bg: #121212;
-    --bg-2: #1A1A1A;
-    --bg-3: #242424;
-    --text: #EBD2BE;
-    --text-2: #A6ACCD;
-    --text-muted: #6B7280;
-    --accent: #A6ACCD;
-    --success: #98C379;
-    --error: #E06C75;
-    --warning: #F59E0B;
     --border: rgba(235, 210, 190, 0.14);
     --surface: linear-gradient(180deg, rgba(36, 36, 36, 0.96), rgba(26, 26, 26, 0.98));
     --paper: #f8f4ee;
@@ -112,7 +102,7 @@ th {
 }
 
 .brief-meta {
-    color: var(--text-muted);
+    color: var(--text-2);
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -183,7 +173,7 @@ th {
 }
 
 .metric-label {
-    color: var(--text-muted);
+    color: var(--text-2);
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -404,3 +394,5 @@ th {
         break-inside: avoid;
     }
 }
+
+@media print { h1, h2, h3, h4, .finding-claim, .insight-text, .summary-copy, .brief-question, .bullet-list, .source-list { color: var(--paper-ink); } }

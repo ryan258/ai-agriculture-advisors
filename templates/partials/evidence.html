@@ -1,0 +1,19 @@
+{% if sources or task_brief %}
+<details class="card"><summary>Supplied context and evidence</summary>
+    {% for key, value in (task_brief or {}).items() %}<h3>{{ key | replace('_', ' ') | capitalize }}</h3><p class="preserve-text">{{ value }}</p>{% endfor %}
+    {% for source in sources or [] %}<article><h3>[{{ source.id }}] {{ source.label }}</h3><p class="field-hint">{{ source.reference }} · {{ source.date or 'Date unknown' }}</p><blockquote class="preserve-text">{{ source.passage }}</blockquote></article>{% endfor %}
+</details>
+{% endif %}
+{% if result_payload and result_payload.consensus_brief %}
+{% set brief = result_payload.consensus_brief %}
+{% if brief.claims or brief.options or brief.disagreements %}
+<section class="card"><h3>Evidence, options, and disagreement</h3><p class="field-hint">These classifications are generated analysis of supplied material, not independent verification.</p>
+{% for claim in brief.claims | default([]) %}<p>{{ claim.claim }} <strong>{{ claim.support }}</strong> {{ claim.source_ids | join(', ') }}</p>{% endfor %}
+{% if brief.options %}<table><caption>Options against the supplied constraints</caption><thead><tr><th scope="col">Option</th><th scope="col">Benefits</th><th scope="col">Tradeoffs and unknowns</th><th scope="col">Supplied source IDs</th></tr></thead><tbody>{% for option in brief.options %}<tr><th scope="row">{{ option.option }}</th><td>{{ option.pros | join('; ') }}</td><td>{{ option.cons | join('; ') }} {{ option.unknowns | join('; ') }}</td><td>{{ option.source_ids | join(', ') }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+{% for difference in brief.disagreements | default([]) %}<h4>{{ difference.point }}</h4><p>{{ difference.viewpoints | join('; ') }}</p><p>Captured turns: {{ difference.turn_ids | join(', ') }}</p><p>Next check: {{ difference.check }}</p>{% endfor %}
+</section>
+{% endif %}{% endif %}
+{% if result_payload and result_payload.execution_receipts %}
+<details class="card"><summary>Execution receipts ({{ result_payload.execution_receipts | length }})</summary><p class="field-hint">Configured IDs and returned metadata are separate. Missing usage or provider details remain unknown. No price is inferred.</p><pre>{{ result_payload.execution_receipts | tojson(indent=2) }}</pre></details>
+{% endif %}
+{% if result_payload and result_payload.run_status and result_payload.run_status != 'complete' %}<section class="card"><h3>Saved checkpoint: {{ result_payload.run_status }}</h3><p>{{ result_payload.run_error }}</p><p class="field-hint">Review completed contributions and missing work before using this partial result. Its working-run reference is {{ result_payload.run_id }}.</p></section>{% endif %}

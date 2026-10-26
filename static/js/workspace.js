@@ -1,7 +1,7 @@
 // Local convenience controls; saved content is never submitted to an advisor here.
 (() => {
     const returnKey = 'ai-advisors-last-result';
-    const validId = value => typeof value === 'string' && /^[a-f0-9]{8}$/.test(value);
+    const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(value);
     let returnId = '';
     let activeRequest = null;
     let elapsedTimer;
@@ -122,6 +122,8 @@
     document.body.addEventListener('htmx:beforeRequest', event => {
         const detail = event.detail;
         if (!detail.target || detail.target.id !== 'response') return;
+        const requestPath = detail.requestConfig && detail.requestConfig.path || '';
+        if (requestPath.startsWith('/runs/') && !requestPath.endsWith('/resume') && !requestPath.endsWith('/pause')) return;
         if (activeRequest) {
             event.preventDefault();
             return;
@@ -136,7 +138,7 @@
         // HTMX has already collected form values before beforeRequest fires.
         lockGenerationButtons();
         requestStatus('Submitting request. Your current question stays in the form.');
-        elapsedTimer = setInterval(() => requestStatus(`${waitingText} ${elapsedText()}`), 1000);
+        elapsedTimer = setInterval(() => { const elapsed = document.getElementById('request-elapsed'); if (elapsed) elapsed.textContent = elapsedText(); }, 1000);
     });
 
     document.body.addEventListener('htmx:beforeSend', event => {
@@ -163,6 +165,10 @@
     document.body.addEventListener('htmx:beforeSwap', event => {
         const target = event.detail.target;
         const xhr = event.detail.xhr;
+        if (xhr && xhr.status >= 400 && xhr.responseText.includes('data-operation-error') && target && ['operation-status', 'save-status', 'roundtable-retry-status'].includes(target.id)) {
+            event.detail.shouldSwap = true;
+            event.detail.isError = true;
+        }
         if (target && target.matches('.personal-notes') &&
             [400, 403, 404, 503].includes(xhr.status) &&
             xhr.responseText.includes('personal-notes')) {
@@ -219,6 +225,7 @@
     if (clearSearch) clearSearch.addEventListener('click', () => {
         const query = document.getElementById('history-query');
         const form = document.getElementById('historySearch');
+        if (form && form.reset) form.reset();
         if (query) {
             query.value = '';
             query.focus();
