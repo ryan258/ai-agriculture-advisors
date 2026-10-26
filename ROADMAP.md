@@ -1,26 +1,19 @@
-# AI Advisors Roadmap
+# AI Advisors direction
 
-Updated October 16, 2026. Local personal tool, version 2.1.0 candidate. The goal is useful advice with less repeated input, reading, and reconstruction after a break.
+October 26, 2026: production-quality local personal workbench, 2.1.0 candidate. Owner automated verification, doctor checks, stopped-app backup, managed startup at localhost:8123, one-request live connectivity diagnostic, and an authorized read-only browser pass are completed. [Remediation status](docs/REMEDIATION-STATUS.md) maps every baseline F01–F24 correction and E01–E18 enhancement to source and remaining evidence.
 
-## Implemented
+## Immediate sequence
 
-- Five configurable panels, individual queries and roundtables, captured advisor profiles, and scoped recovery preserving successful contributions.
-- Captured Decision Checks and structured handoffs before the expandable full discussion, including stale-synthesis warnings and visible advisor failures.
-- Copy controls with readable selected-text fallback, editable starters, retained local drafts, and deliberate clearing.
-- Truthful request status, duplicate-submission protection, and actual elapsed browser-request time.
-- Case-insensitive search across all saved metadata and personal notes, stable ten-item pagination, and readable legacy records.
-- Optional personal title, decision status, next/last step, blocker, and outcome in separate annotation storage. Generated content and exports remain unchanged.
-- A last-opened/saved Resume entry point and a short list of explicitly undecided or waiting items.
-- Evidence starter fields for a supplied source label and passage, plus Accessibility guidance that does not assume a notes destination exists.
+1. One small personal workflow using a question Ryan can assess, or one fictional case from the [quality pack](docs/QUALITY-PACK.md).
+2. Assess answer usefulness, save a new result and personal next-step note, then reload and reopen to test the save/return loop.
+3. Observe whether one saved task needs less reconstruction after a real break; live model quality, real restore rehearsal, and dictation/print remain separate observations as needed.
 
-The October 16 implementation passed 144 targeted Python tests, 12 headless JavaScript tests, and the full locked test suite of 182 tests in 4.14s. Independent source review found no remaining concrete defects in the integrated scope. See [release readiness](docs/RELEASE-READINESS.md) for exact commands and evidence limits.
+## Prepared capabilities
 
-## Next personal checks
+Bounded durable working runs; private receipts; strict provider and saved-data boundaries; source-linked claims/options/disagreement; task context and reusable starters/background; linked follow-ups; complete records, optional-note reports and additive import; useful history filters/organization; comparisons; a narrow deterministic effort calculator; local operations and private backup/restore. Existing catalog, historical saves, notes and the no-build stack are retained.
 
-Use the [single personal pass](docs/PERSONAL-USE-CHECK.md) on one existing saved result. Check normal dictation and reading, copy behavior, saving a note, finding it later, and returning after a real break. These observations remain pending.
+## Let actual use earn further work
 
-The [month plan](docs/MONTH-PLAN.md) records implementation and personal acceptance separately. The next priority should come from an actual difficulty in that pass.
+Measure first-load metadata latency if real history is slow; avoid speculative indexing. Expand calculations, document formats, catalog or integrations only for a recurring personal need. Per-token prices require current authoritative provider data and are not fabricated from usage receipts. Permanent deletion, semantic retrieval, accounts, hosted infrastructure and multi-user productization are not requirements of professional-quality personal output.
 
-## Deferred unless use justifies them
-
-Per-advisor streaming, cancellation/background jobs, provider token/cost dashboards, model selection, semantic search, caching, additional panels, document ingestion, deletion/archive management, and cross-tool integrations remain optional. The current implementation adds no accounts, deployment workflow, new database engine, runtime dependencies, or frontend build.
+Recorded October 16 save/search/immediate reload acceptance and its 182-test result remain historical; they do not verify the prepared October 25 changes.

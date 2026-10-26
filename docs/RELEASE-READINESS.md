@@ -1,10 +1,16 @@
 # AI Advisors 2.1.0 candidate
 
-## October 16 local implementation
+## Current — October 25 repair and workflow patch (updated October 26, 2026)
+ 
+ **Owner automated verification and authorized read-only browser pass completed.** Owner-run gates passed: targeted Python regressions, Mypy typing across 11 files, 17 headless JavaScript checks, configuration/dependency doctor, stopped-app backup at `.local-backups/advisors-20261026T145305Z-928b9a`, managed startup at localhost:8123, and a one-request live provider connectivity diagnostic. An authorized read-only browser pass verified loading, search/reopen, keyboard navigation, and 4 UI/focus fixes.
+ 
+ Broader personal workflow acceptance, real-data restore rehearsal, and live synthesis-model quality remain pending. The next step is one small personal workflow or fictional quality case from [Quality pack](QUALITY-PACK.md). Detailed implementation and remaining evidence are in [Remediation status](REMEDIATION-STATUS.md).
+
+## Historical — October 16 local implementation
 
 The remaining month of engineering work is implemented locally: captured summaries before the full discussion, copy controls, draft recovery, truthful request feedback, metadata search across all history, separate personal annotations/outcomes, and saved return points. Personal notes use a lazy `personal_annotations` collection; original `query_history` documents and exports are unchanged. There is no migration or history reset.
 
-**Personal acceptance verified.** On October 16, 2026, Ryan verified the local personal-use loop (saving notes, search, and cold-return resumption via Continue saved work; verdict: "I think it looks good"). The current implementation passed **144 targeted Python tests in 4.07s**, **12 headless JavaScript tests**, and the full locked automated suite (**182 passed in 4.14s**). Independent source review found no remaining concrete defects after correcting in-flight note edit loss, hidden independent-advisor errors, and Resume failure wording. JavaScript syntax checks passed. The older automated and live results below retain their original dates and scope.
+**Bounded owner observation recorded.** On October 16, 2026, Ryan verified saving notes, search, and immediate reload/resume via Continue saved work; this does not establish a measured return after a real break or dictation/assistive-technology coverage (verdict: "I think it looks good"). The current implementation passed **144 targeted Python tests in 4.07s**, **12 headless JavaScript tests**, and the full locked automated suite (**182 passed in 4.14s**). Independent source review found no remaining concrete defects after correcting in-flight note edit loss, hidden independent-advisor errors, and Resume failure wording. JavaScript syntax checks passed. The older automated and live results below retain their original dates and scope.
 
 The targeted gate was:
 
@@ -17,11 +23,11 @@ These checks cover old-record discovery, stable paging, metadata-only reads, sep
 
 The updated local app started successfully on port 8123. Read-only checks of `/`, `/history`, `/resume`, and `/openapi.json` passed; the schema exposes the personal-notes route. These HTTP checks did not submit a discussion or save notes and do not exercise browser JavaScript.
 
-The full locked test suite (`uv run --locked pytest -q`) verified all 182 tests passed in 4.14s on October 16, 2026. GitNexus reindexed successfully (977 nodes, 2,271 edges, 49 clusters, 73 flows); its scan classified the combined tracked diff as breadth across shared routes and storage. Source review and targeted tests supplement it. Ryan's personal acceptance remains the next open step; this is not a release approval.
+The full locked test suite (`uv run --locked pytest -q`) verified all 182 tests passed in 4.14s on October 16, 2026. GitNexus reindexed successfully (977 nodes, 2,271 edges, 49 clusters, 73 flows); its scan classified the combined tracked diff as breadth across shared routes and storage. Source review and targeted tests supplement it. The recorded owner observation covers notes/search/immediate reload; dictation, assistive-technology behavior, and a measured return after a break remain separate unknowns. This was not a release approval.
 
 The private stopped-app snapshot is `.local-backups/month-20261016-171319`. The [personal use and restart check](PERSONAL-USE-CHECK.md) records its contents, restore precautions, one consolidated personal trial, and the verified test suite evidence. The [month plan](MONTH-PLAN.md) keeps unobserved personal tasks unchecked.
 
-## October 15 candidate evidence
+## Historical — October 15 candidate evidence
 
 Prepared on 2026-10-15 for local personal use. The candidate is based on `main` at `c2c97f8` with local changes; it is not a published release or an immutable release artifact.
 

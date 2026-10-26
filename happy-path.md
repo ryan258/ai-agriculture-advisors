@@ -1,96 +1,16 @@
-# Happy Path - Quick Start Guide
+# One low-input local work loop
 
-Fastest path to try the AI Advisors 2.1.0 candidate locally. Existing installations should use the [upgrade and recovery notes](docs/RELEASE-READINESS.md#upgrade-and-recovery) and keep their current configuration and saved results.
+The October 25 patch's owner automated continuation passed: the save/import regression, typing across 11 source files, and 17 headless JavaScript checks. On October 26 the owner also reported a passing local doctor, completed stopped-app backup, managed startup at [localhost:8123](http://localhost:8123), and a one-request live provider connectivity diagnostic. The authorized read-only browser pass verified saved-history search/reopen, reload return points, and keyboard navigation, and corrected four small UI issues. Refresh an existing tab to pick up those corrections. Actual write/recovery, synthesis-model and answer quality, dictation/print, and broader personal acceptance remain pending; see [current evidence](docs/REMEDIATION-STATUS.md) and [Recovery](docs/RECOVERY.md).
 
-## Prerequisites
+For a configured checkout, run `./advisors start`, then open its reported loopback address. Existing `.env` and history stay in place. Setup for a new checkout is in [README](README.md); `./advisors doctor` is offline unless `--live` is deliberately selected.
 
-- **Python 3.12+**
-- **uv** (Astral) package manager
-- **OpenRouter API Key**: https://openrouter.ai/keys
+1. Resume a familiar saved result or choose a panel and a small question. Optional context/source fields are visible and user-selected. Select one round to start.
+2. Review planned calls and selected models. A Submit/Round Table action sends this input to the provider. Completed contributions checkpoint locally; a browser close does not cancel the run.
+3. Pause if needed. Interrupted or uncertain work is visible under Working runs. Resume is manual and retains completed text; an ambiguous prior call needs acknowledgement.
+4. Save the finished/partial checkpoint. A failed Save leaves the answer and retry control intact. The same saved checkpoint is idempotent.
+5. Record one personal next action/outcome, then Save personal notes. A recovered browser draft is not application-saved until that action succeeds. Find the item by title/status/tag, Resume, or its stable local bookmark.
+6. Download Complete record for exact content or an explicitly abridged brief for presentation. Select personal notes only when you want them in a decision report. Review private content before sharing.
 
-## Step 1: Install Dependencies
+Useful low-input controls: reusable question/background selection, capture current question as a starter, source excerpt preview, copy next step, and discoverable Alt+Q/F/S/R shortcuts. No global alias or voice command is installed by this patch.
 
-```bash
-uv sync --locked
-```
-
-## Step 2: Configure Environment
-
-```bash
-test -f .env || cp .env.example .env
-```
-
-Edit `.env` and set your API key and an available model ID from your OpenRouter account. The example values below are placeholders:
-
-```env
-OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
-OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
-OPENROUTER_MODEL=your_model_id_here
-# Optional: choose a different available model for synthesis only.
-# OPENROUTER_SYNTHESIS_MODEL=your_synthesis_model_id_here
-PORT=8123
-CHROMADB_PATH=.chromadb
-```
-
-## Step 3: Start the App
-
-**Option A: start script**
-```bash
-./start.sh
-```
-
-**Option B: direct**
-```bash
-uv run uvicorn main:app --reload --port 8123
-```
-
-Open: http://localhost:8123
-
-## Step 4: Verify the UI
-
-1. Choose a panel in the Advisor Panel selector.
-2. Choose one of its example questions, or follow [the demo walkthrough](docs/DEMO-WALKTHROUGH.md) for a concrete scenario.
-3. Click **Submit Query** for one perspective, or select two advisors and use a one-round **Round Table** to compare perspectives.
-
-**Success:** The responses distinguish recommendations from assumptions and identify the missing information that could change the decision. The advisors reason from the supplied question; they do not independently verify it.
-
-## Optional: Roundtable
-
-1. Select two advisors with different roles.
-2. Set **Roundtable Rounds** to **1** for a compact first comparison.
-3. Enter a concrete question with the decision, constraints, and evidence you already have.
-4. Click **Round Table**, then save the result if you want to resume later.
-
-**Success:** You see each advisor's contribution and a useful synthesis. AI Workflow returns a task packet, review checks, a checkpoint, and a measured success criterion. Accessibility & Effort returns a starter you can use, a resume record, dictation recovery, and a small trial. These panels end with one Decision Check; their individual roundtable turns do not repeat it. Agreement between AI personas is not independent evidence.
-
-## Save and recover
-
-Choose **Save Result**, reopen it from Saved Results, and export Markdown or an HTML brief. Reopening and exporting use the stored output without making new model requests. An existing saved answer will not acquire new wording simply because the application was upgraded.
-
-If a call fails, keep the completed answers. Use **Retry failed advisors & synthesis** only for missing contributions, or **Retry synthesis** when all advisor answers succeeded. Wait for any retry countdown; it is a minimum pause, not a recovery promise. Save again after retry to retain a new version alongside the earlier save.
-
-## Quick Troubleshooting
-
-### Error: `OPENROUTER_API_KEY environment variable is required`
-
-- Ensure `.env` exists and has a valid key
-- Restart the server
-
-### Error: `Invalid CSRF token`
-
-- Refresh the page and try again
-- Ensure cookies are enabled for `localhost`
-
-### Port in use
-
-Set a different port in `.env`:
-
-```env
-PORT=8124
-```
-
-### Tests cannot import FastAPI or recognize `pytest.mark.asyncio`
-
-Use `uv run pytest`, which selects the project environment, rather than a global `python -m pytest`. `uv sync --locked` installs the development dependencies. The [release readiness note](docs/RELEASE-READINESS.md) includes the final regression command.
-
-The browser remembers your last panel and selections. Switching panels keeps your question and current results. Save a result to preserve its captured advisor definitions; older results explicitly show that those definitions were not captured. See the [guided five-panel demo](docs/DEMO-WALKTHROUGH.md) for scenarios that surface meaningful tradeoffs, evidence gaps, and recovery paths.
+A useful result identifies supplied support, assumptions, unresolved disagreement, and the next check. AI agreement does not establish independent verification. An actual after-break or dictation observation must be recorded separately from an immediate reload or automated check. See [current register](docs/REMEDIATION-STATUS.md) and [fictional quality pack](docs/QUALITY-PACK.md).

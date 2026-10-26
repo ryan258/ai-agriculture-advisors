@@ -1,159 +1,102 @@
 # AI Advisors
 
-A local tool for asking a question from several AI perspectives. Choose an advisor panel, get individual answers or a roundtable discussion, and save results for later reference.
+A local, single-user workbench for examining a question from several AI perspectives, preserving the evidence and decision, and returning with little repeated input. Professional quality here means reliable personal work: deliberate provider calls, recoverable progress, complete records, and accessible controls.
 
-**2.1.0 release candidate:** compact handoffs, less repeated roundtable advice, and recovery that keeps completed answers. See the [changelog](CHANGELOG.md) and [release readiness and upgrade notes](docs/RELEASE-READINESS.md) for the current evidence and remaining checks.
+**Current state — October 26, 2026:** the 2.1.0 candidate includes a broad repair and workflow patch. **Owner verification passed:** the targeted save/import regression, typing across 11 source files, all 17 headless JavaScript checks, configuration/dependency diagnostics, stopped-app backup, managed startup at localhost:8123, and a one-request live provider connectivity diagnostic. An authorized read-only browser pass also verified page loading, saved-history search/reopen, reload return points, keyboard navigation, and clean console output after four small UI corrections. Actual write/recovery, synthesis-model and answer quality, dictation/print, and broader personal acceptance remain pending. The authoritative correction/enhancement and verification register is [Remediation status](docs/REMEDIATION-STATUS.md). The [original review](docs/PROJECT-REVIEW-2026-10-25.md) is a dated baseline; its earlier passing checks do not validate this patch.
 
-The October 16 local implementation adds summaries before full discussions, copy controls, recoverable drafts, saved-work search, separate personal notes and outcomes, a Resume entry point, and truthful request feedback. Its focused gate passed **144 Python tests and 12 headless JavaScript tests**, and the full locked test suite (**182 passed in 4.14s** on 2026-10-16). Personal browser, dictation, and return-after-a-break acceptance remain open. Follow the [personal use and restart check](docs/PERSONAL-USE-CHECK.md) for one focused trial; the [month plan](docs/MONTH-PLAN.md) distinguishes implemented work from pending personal observations.
+## Start or resume locally
 
-The first live candidate trial verified saving, reopening, and both export contents, but found capability-grounding and save/replay UI issues. Corrections for all three findings are implemented; targeted regressions passed (97 passed) and the full locked suite passed (151 passed) on 2026-10-15, while live model adherence and personal dictation/resumption acceptance remain unverified. Shipping acceptance remains on hold. The original saved trial is preserved unchanged.
-
-Built-in panels:
-
-- **Agriculture:** the original ten advisors covering crops, climate, commodities, agricultural technology, supply chains, soil, pests, irrigation, organic farming, and farm economics.
-- **Software:** five advisors covering architecture, implementation, testing, security, and accessibility.
-- **AI Workflow & Delegation:** workflow design, bounded assignments, privacy, and recovery.
-- **Accessibility & Effort:** voice-first workflows, clear interactions, effort reduction, and resumption.
-- **Evidence & Judgment:** claims, source quality, alternative explanations, and uncertainty.
-
-FastAPI + Jinja2 + HTMX + ChromaDB, with plain JavaScript and the Candlelight dark theme. No frontend build step or user accounts.
-
-## Run locally
-
-Requires Python 3.12+, uv, and an OpenRouter API key and model configured in `.env`.
-
-From this checkout:
+Requires Python 3.12+ and uv. Provider use requires your chosen chat-completions endpoint, API key, and available model ID. Keep an existing `.env` and history directory.
 
 ```bash
 uv sync --locked
 test -f .env || cp .env.example .env
-# Set OPENROUTER_API_KEY and OPENROUTER_MODEL in .env.
-./start.sh
+# Configure the provider fields in .env, keeping your existing private values.
+./advisors doctor
+./advisors start
 ```
 
-Open [localhost:8123](http://localhost:8123). The checkout directory can keep its existing `ai-agriculture-advisors` name; the application and Python project are named **AI Advisors**.
-
-For an existing installation, keep your current `.env` and saved-history directory. Follow the [upgrade and recovery steps](docs/RELEASE-READINESS.md#upgrade-and-recovery) before replacing the checkout.
-
-## Use
-
-For a guided demonstration of all five panels, use the [AI Advisors demo walkthrough](docs/DEMO-WALKTHROUGH.md). Its scenarios show how to surface useful disagreement, decision-relevant unknowns, and a practical next check without treating AI agreement as proof.
-
-1. Choose a panel in the Advisor Panel selector.
-2. Select advisors and enter a question, or choose an example.
-3. Choose **Submit Query** for separate answers or **Round Table** for a discussion with at least two distinct advisors.
-4. Choose **Save Result**, then reopen it from Saved Results or export it as Markdown or an executive brief.
-
-The browser remembers the last panel and its advisor selections separately for each panel. Switching panels keeps the current question and displayed results. If browser storage is unavailable, panel selection still works for the current page.
-
-New results capture the panel name, advisor names, and advisor definition prompts before provider calls. Expand **Advisor definitions used** to inspect them. These are profile snapshots, not a record of the complete provider request: roundtable turns remove the standalone closing instruction and add discussion-specific guidance at execution time. Saved history and both export formats use the captured definitions even if the catalog changes later. Older results remain readable and explicitly say that their advisor definitions were not captured.
-
-Advisors are AI personas using the configured model. Agreement between them does not establish independent verification. The moderator is instructed to preserve disagreements and missing evidence. These prompt instructions do not guarantee model behavior.
-
-Standalone answers in the three decision-support panels ask each advisor to finish with a compact **Decision Check**:
-
-1. **Recommended next step** — the smallest useful action.
-2. **Strongest objection** — the most important reason to question it.
-3. **What remains unknown** — the missing evidence or unresolved condition that matters.
-4. **What needs your decision** — one choice that belongs to you, or “No decision needed yet.”
-
-In their roundtables, advisor turns stay concise and omit individual Decision Checks; the moderator requests the same four points as structured data and renders one closing check after the synthesis. A missing or invalid closing object uses the existing plain-text fallback with the same instructions. Saved results retain the points, and exports include captured Decision Checks from structured roundtables or correctly formatted individual/fallback answers. No new advice is generated during export. Agriculture and Software keep their existing response formats.
-
-AI Workflow & Delegation roundtables use a compact handoff synthesis: the task packet itself, a review checklist tied to supplied evidence, a resumable checkpoint, and a measured comparison with manual work. The moderator separates prompt requests from enforceable tool permissions and calls out that hosted models receive submitted input.
-
-Accessibility & Effort roundtables return a reusable voice-friendly starter, a short resume record, a concrete dictation fallback, and one small trial with an observable effort check. In both panels, roundtable contributions stay brief and the moderator leaves at most one Decision Check for the end; standalone advisor answers keep their individual closing check.
-
-The roundtable synthesis model can be set separately with `OPENROUTER_SYNTHESIS_MODEL`; advisor responses continue to use `OPENROUTER_MODEL`. This is useful when the synthesis model is temporarily unavailable or needs broader provider routing.
-
-## Resume a partial roundtable
-
-If a provider call fails, completed advisor answers stay visible. **Retry failed advisors & synthesis** requests only failed or unfinished contributions and then refreshes the synthesis. If all advisor answers completed, **Retry synthesis** requests only the synthesis. Recovery is manual except for one bounded synthesis failover described below.
-
-A confirmed OpenRouter upstream shared-pool 429 during structured synthesis triggers one attempt through another provider of the same configured model. That attempt uses JSON mode with the original schema in the instructions because strict schema support can restrict routing to the saturated provider. Account/key limits do not trigger this failover. If it fails, further calls pause and a countdown uses the provider's retry guidance, with a 60-second default when none is supplied. The countdown is a minimum wait, not a guarantee that capacity will recover. Retry uses the original question, round order, and captured advisor definitions rather than the current sidebar selections; the current application's discussion and synthesis rules still apply. Successful contributions remain as written; they are not regenerated to incorporate a newly recovered earlier contribution. Synthesis uses successful contributions only and notes any gaps. Empty text synthesis remains a failure that can be retried.
-
-You can save a partial result, reopen it, and retry later. Save again after retry to keep the revised result as a new saved version. Older saved failures are supported. Exports identify incomplete synthesis instead of presenting provider error text as advice.
-
-## Find and resume your work
-
-**Saved Results** searches all saved metadata and personal notes, including older results beyond the recent list. Search is case-insensitive; pages show ten matching records at a time. Older records without a captured panel label remain readable and searchable by their question or your own notes.
-
-Open a saved result to add an optional title, your decision status, next step, last completed step, blocker, and outcome. **Save personal notes** persists those fields in a separate Chroma collection. They never rewrite the advisor transcript, captured prompts, or existing exports, and never send a model request. Blank status is unset; only your explicit Undecided or Waiting items appear in the unfinished list.
-
-**Continue saved work** remembers the most recently opened or saved result in this browser. Resume opens it without retrying advisors. Draft edits are explicitly unsaved until you choose Save personal notes. Captured generated checkpoints remain suggestions rather than proof that anything was saved or configured. Browser storage is optional; ordinary saved history remains available without it.
-
-The current question is retained locally when browser storage is available. Clear draft deliberately removes it. Result requests show waiting, completion/failure, and actual elapsed browser-request time; they do not estimate provider progress. New discussions and scoped retries still require an intentional request.
-
-## Customize advisors and panels
-
-Edit two plain JSON files and restart the application:
-
-- `lib/experts/definitions/advisors.json`: advisor definitions.
-- `lib/experts/definitions/panels.json`: panel membership, defaults, descriptions, and example questions.
-
-An advisor needs a stable, globally unique `role`, a `label`, a `system_prompt`, and `limitations`. The optional `response_format` accepts `"compact_decision"` for the shared Decision Check or `"workflow_handoff"` for delegation-specific guidance plus the same closing. Omitting it keeps the original format. The built-in panel determines the specialized synthesis layout; a custom panel uses the general moderator even when it includes workflow advisors.
-
-```json
-{
-  "role": "story_editor",
-  "label": "Story Editor",
-  "system_prompt": "Help examine structure, character choices, and pacing in the supplied draft.",
-  "limitations": "Use only the supplied material. State missing context and do not invent author intent."
-}
-```
-
-A panel references existing roles, so a custom panel can combine advisors from different subjects:
-
-```json
-{
-  "id": "creative",
-  "label": "Creative",
-  "description": "Perspectives on writing and revision.",
-  "roles": ["story_editor"],
-  "default_roles": ["story_editor"],
-  "suggested_queries": [
-    {"label": "Review a draft", "query": "Help me find the structural problem in this draft."}
-  ]
-}
-```
-
-Append these objects to their respective JSON arrays. IDs begin with a lowercase letter and contain lowercase letters, digits, underscores, or hyphens. Keep IDs stable to make references understandable. Invalid or duplicate IDs, blank instructions, unknown panel members, and invalid defaults produce clear startup errors. A single-advisor panel supports individual answers; roundtables require at least two distinct advisors.
-
-The original agricultural role keys are preserved. The old prompt-only Python subclasses have been replaced by one configurable implementation; new advisors do not need Python code.
-
-## Project structure
-
-- `main.py`: HTTP routes and HTML responses.
-- `lib/experts/`: catalog validation, generic advisor implementation, and lookup.
-- `lib/engine/`: provider client and environment configuration.
-- `lib/services/`: individual queries, discussions, and brief rendering.
-- `lib/storage/`: ChromaDB history, retaining the existing `.chromadb` location and `query_history` collection.
-- `templates/` and `static/`: Jinja2, HTMX, plain JavaScript, and CSS.
-- `tests/`: focused behavioral checks.
-
-`lib/` does not import FastAPI or `main.py`.
-
-## Configuration
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `OPENROUTER_API_KEY` | Provider API key | Required |
-| `OPENROUTER_API_URL` | Provider chat-completions endpoint | Set in `.env` |
-| `OPENROUTER_MODEL` | Model identifier | Set in `.env` |
-| `OPENROUTER_SYNTHESIS_MODEL` | Optional model used only for roundtable synthesis | `OPENROUTER_MODEL` |
-| `PORT` | Local server port | `8123` |
-| `CHROMADB_PATH` | Saved results directory | `.chromadb` |
-| `ALLOW_MISSING_API_KEY` | Allow startup without a key for local checks | `false` |
-
-## Development checks
-
-Use the project environment for checks; a global `python -m pytest` can select a different Python without FastAPI or the async test plugin. `uv sync --locked` includes the development dependencies.
-
-For the trial-correction regression gate (decision panels, routes, experts, and retry behavior):
+Open the local address it reports, normally [localhost:8123](http://localhost:8123). `./advisors` defaults to start; `./start.sh` remains a compatibility launcher. The scripts anchor configuration, static files, and relative storage paths to this checkout, including when invoked by an absolute path from another directory. They load `.env` as data, never as shell code. They do not install a global alias or voice command.
 
 ```bash
-uv run --locked pytest -q tests/test_decision_panels.py tests/test_routes.py tests/test_experts.py tests/test_roundtable_retry.py
+./advisors status
+./advisors stop
+./advisors start --offline
 ```
 
-**97 passed in 2.47s** for those four files (`tests/test_decision_panels.py tests/test_routes.py tests/test_experts.py tests/test_roundtable_retry.py`) (and **151 passed in 3.18s** across the full locked suite) on 2026-10-15. Provider calls are mocked in these tests. The [release readiness note](docs/RELEASE-READINESS.md) gives the remaining regression command and a small live acceptance trial; browser, assistive technology, and live model behavior remain separate checks.
+Offline mode permits saved-work use without provider credentials. Sending a question still requires a functioning configured provider. Supported entrypoints bind to `127.0.0.1`; there are no user accounts. Keep the app local.
 
-See [API.md](API.md), [happy-path.md](happy-path.md), and `docs/architecture/` for request fields and architectural boundaries.
+**Existing installation:** stop its current server and make a private backup before first activation of changed persistence code. If the old server was launched directly in a terminal, stop it with Ctrl-C. The managed stop command signals only its own verified process.
+
+```bash
+./advisors backup
+# Restore rehearsal uses a NEW directory; it never overlays current history:
+./advisors restore /absolute/path/to/snapshot --destination /absolute/path/to/new-rehearsal
+```
+
+Backups contain saved answers, personal notes, the run journal, reusable assets, source files, and a private configuration copy when present. They may contain credentials; do not share them. Browser-local drafts are excluded. See [recovery](docs/RECOVERY.md).
+
+## A useful work loop
+
+1. Choose a built-in panel and advisors. Enter one question or select a reusable starter. Optional task fields capture goal, decision, constraints, location/date, deliverable, and background.
+2. Add only the source passages you want sent. Each gets a stable local ID such as `S1`. A URL is a reference, not opened evidence. Local `.txt`/`.md` previews require explicit excerpt selection.
+3. Review the displayed models, planned calls, and limits. Submit individual answers or a roundtable. One round is the UI default. These actions send the selected input to your provider.
+4. Completed contributions checkpoint to a local working-run journal. Pause prevents new calls after currently dispatched work. Closing the page does not cancel a background run. After application interruption, recovery is manual; ambiguous calls require acknowledgement because remote work may have completed.
+5. Save the checkpoint when ready. Save retries are idempotent for the same run state. Reopen, bookmark, tag, pin, archive reversibly, or record a personal next step and outcome. Notes are separate from generated answers and are excluded from ordinary exports.
+6. A linked follow-up previews optional carried context, a bounded prior-result excerpt, and the recorded outcome. Retrying missing answers retains successful text and creates a new saved version linked to the parent.
+
+The five panels are Agriculture, Software, AI Workflow & Delegation, Accessibility & Effort, and Evidence & Judgment. Their validated JSON catalog is the source of truth for advisor counts, roles, and examples. The [demo](docs/DEMO-WALKTHROUGH.md) gives domain examples.
+
+AI agreement is generated analysis, not independent verification. General roundtable synthesis can show source-linked claims, options, and unresolved disagreements tied to completed turns. Unknown references are rejected; semantic accuracy still needs review. Agriculture roles explicitly work from supplied information and identify missing location, date, units, and observations. This app has no autonomous browsing, market/weather feed, field measurements, or action tools.
+
+## Find, reuse, and export
+
+Saved Results searches metadata and personal notes across old and new records; answer-body search is not implemented. Filters cover captured panel label, your status, tag, date range, and archived items. Pinned matches sort first. **Continue saved work** and `/work/RESULT_ID` reopen saved work without provider calls.
+
+**Reusable starters, context, and local tools** includes user-selected background snippets, question starters, two saved-result comparisons, a measured-minutes calculator, archive import preview, and six fictional quality cases. Preparing a case makes no model call. No calculator infers advice quality or a medical benefit.
+
+- **Complete Markdown record:** exact question, all answer/transcript text, qualifications, code, URLs, sources, profile snapshots, and execution metadata.
+- **Complete JSON archive:** versioned portable records. Notes are excluded unless deliberately selected through the notes-inclusive URL/API. Import is previewed and additive; identical existing records retain their local notes, and conflicting IDs receive a new ID.
+- **Abridged Markdown / HTML executive brief:** presentation summaries, labeled abridged. Use the complete record for archival fidelity.
+- **Decision report:** complete generated record plus personal decision/outcome only when its inclusion checkbox is selected.
+
+Execution receipts distinguish configured model IDs from returned provider/model/usage fields. They include request fingerprints, rule version, timestamps, finish reasons, and transport status. They do not contain API keys or a verbatim HTTP envelope. Missing usage/cost remains unknown.
+
+## Accessible controls
+
+The Candlelight palette remains centralized in `static/css/theme.css`. Meaningful small text uses the lighter secondary text color. Markdown tables retain semantic table elements. Live announcements report milestones; elapsed seconds are visual only. All main actions have visible controls; shortcuts are Alt+Q (question), Alt+F (search), Alt+S (save visible notes/result), and Alt+R (resume). Browser/OS shortcuts may take priority.
+
+Questions, selected task context, and per-result note drafts can be retained in this browser. Notes become durable application records when **Save personal notes** succeeds. Navigation restores unsaved note drafts; when browser storage is unavailable, opening another result is blocked until the unsafe draft is saved or explicitly discarded. Storage is convenience recovery, not a backup or encrypted vault. Clear controls remove local drafts deliberately. A focused keyboard/dictation/print observation for this patch remains pending.
+
+## Configuration and limits
+
+See [.env.example](.env.example). URL/model/port validation occurs before dispatch. Remote endpoints require HTTPS; loopback HTTP supports a deliberately configured local provider.
+
+| Variable | Default / purpose |
+| --- | --- |
+| `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `OPENROUTER_MODEL` | Chosen provider credentials, endpoint and model; `.env.example` contains placeholders |
+| `OPENROUTER_SYNTHESIS_MODEL` | Optional synthesis model; otherwise advisor model |
+| `PORT` | `8123` |
+| `CHROMADB_PATH` | `.chromadb`, resolved from project root |
+| `MAX_OUTPUT_TOKENS` | `1800` per dispatch |
+| `MAX_RUN_CALLS` | `32`, including fallback and resumed dispatches |
+| `MAX_RUN_SECONDS` | `600` per attempt |
+| `MAX_PROMPT_CHARS` | `120000` across messages per dispatch |
+| `MAX_RUN_ATTEMPTS` | `3`, with manual resume only |
+| `ALLOW_MISSING_API_KEY` | `false`; offline startup override |
+
+No price or spending guarantee is inferred from token/call limits. A transport interruption can leave remote work uncertain. No automatic repeated polling request dispatches model work.
+
+## Verification and contribution
+
+Ryan runs the checks for this accumulated patch. This command uses temporary storage and fictional provider settings, then runs Python regression checks, focused typing, and standard-library headless JavaScript checks. It makes no deliberate live-provider call and does not reindex GitNexus:
+
+```bash
+./advisors check
+```
+
+It stops at the first failed gate. Return the failure output for repair. Node is development tooling for headless JS checks only; the application has no Node runtime/build dependency. [CONTRIBUTING.md](CONTRIBUTING.md) describes narrower owner-run checks.
+
+To rerun one corrected Python test and continue through the typing and JavaScript gates, use `./advisors check --target tests/test_harmony.py::test_source_ids_and_disagreements_resolve_only_to_captured_evidence`. The optional target can be a pytest file or node; omitting it runs the full Python suite.
+
+The implementation uses FastAPI, Jinja2, vendored HTMX/Marked/DOMPurify, vanilla JS/CSS, ChromaDB for saved results, and stdlib SQLite for working state. No new Python runtime dependency was added. New history writes use `query_history_v3` with inert explicit embeddings; `query_history` remains readable without migration. See [architecture](docs/architecture/boundaries.md), [API](API.md), [recovery](docs/RECOVERY.md), and [current remediation status](docs/REMEDIATION-STATUS.md).

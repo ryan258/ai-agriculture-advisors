@@ -1,5 +1,8 @@
 # AI Advisors Personal Use and Restart Check
 
+**Current state — October 26, 2026:** owner automated continuation, doctor checks, stopped-app backup, managed startup, live connectivity diagnostic, and an authorized read-only browser pass completed; broader personal acceptance trial pending. See [Recovery](RECOVERY.md) and [Remediation status](REMEDIATION-STATUS.md).
+
+
 The remaining month of engineering work is implemented locally. This is one focused way to check whether the resulting loop works with Ryan's normal input and reading methods. It does not require thirty consecutive days or a new model discussion.
 
 ## Start or return
@@ -33,8 +36,8 @@ The result status reports waiting, completion, failure, and actual elapsed brows
 
 ## Where personal information lives
 
-- Starters remain in `lib/experts/definitions/panels.json`.
-- Saved generated content remains in the existing `query_history` collection under configured `CHROMADB_PATH` (default `.chromadb`).
+- Built-in examples remain in `lib/experts/definitions/panels.json`; personal starters/background are in `workbench.sqlite3`.
+- Existing generated content remains in `query_history`; new saves use `query_history_v3` under configured `CHROMADB_PATH` (default `.chromadb`). No migration rewrites the old records.
 - Your optional annotations live in the separate `personal_annotations` collection in that same directory. Saving notes does not rewrite advisor answers, captured definitions, or exports.
 - Draft text, panel preferences, and the last result ID remain browser-local conveniences. They are not a substitute for Save Result and Save personal notes.
 
@@ -46,6 +49,6 @@ Stop the app before restoring. Preserve a separate copy of the current history a
 
 ## Current evidence and verified test suite
 
-On October 16, 2026, the implementation passed 144 targeted Python tests, 12 dependency-free headless JavaScript tests, and the full locked test suite (`uv run --locked pytest -q`, 182 passed in 4.14s). Independent source review closed the integration findings. These checks use isolated fixtures and mocked model boundaries; no new live model discussion or browser acceptance pass was run.
+On October 16, 2026, the implementation passed 144 targeted Python tests, 12 dependency-free headless JavaScript tests, and the full locked test suite (`uv run --locked pytest -q`, 182 passed in 4.14s). Independent source review closed the integration findings. These checks use isolated fixtures and mocked model boundaries; no live model discussion or browser acceptance pass was part of those automated checks. A later October 16 owner observation recorded notes/search/immediate reload-resume ("I think it looks good").
 
-The app was restarted on localhost:8123 and its page, history, Resume, and API schema passed read-only HTTP checks. The GitNexus knowledge graph was reindexed (977 nodes, 2,271 edges, 49 clusters, 73 flows); its scan classified the breadth across shared routes and storage. Personal browser, dictation, and cold-return acceptance remain the next open step.
+The app was restarted on localhost:8123 and its page, history, Resume, and API schema passed read-only HTTP checks. The GitNexus knowledge graph was reindexed (977 nodes, 2,271 edges, 49 clusters, 73 flows); its scan classified the breadth across shared routes and storage. The recorded owner loop is bounded to save/search/reload; dictation, actual assistive-technology behavior and measured cold-return effort remain unverified, as do changed interactions in the October 25 patch.

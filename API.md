@@ -1,240 +1,77 @@
-# API Documentation
+# Local API and HTML contracts
 
-HTML/HTMX endpoints for the AI Advisors 2.1.0 candidate. Requests and responses use the existing routes; handoff formats are carried inside the saved roundtable payload.
+Current source: October 25 repair patch, 2.1.0 candidate; owner verification pending. This is a single-user loopback app at `http://localhost:8123`. No authentication/accounts are provided. Supported launchers bind `127.0.0.1` and allow local Host names.
 
-## Base URL
+## Request/error boundary
 
-```
-http://localhost:8123
-```
+`GET /` sets an HTTP-only SameSite=Lax `csrf_token` cookie. Every mutating POST also requires its matching `csrf_token` form field. Requests normally use form encoding; file previews use multipart. Opening saved history, exports, comparison, library, or run status makes no model call.
 
-## Authentication
+Interactive validation and failures return HTML with truthful status: 400 invalid domain input, 403 CSRF, 404 unavailable record, 422 form/schema/corrupt saved record, 429 request rate limit, and 503 operation/storage failure. General errors carry `data-operation-error`, `HX-Retarget: #operation-status`, and `HX-Reswap: innerHTML`; Save errors target `#save-status`, legacy retry errors target `#roundtable-retry-status`. The client opts these fragments into error swapping while keeping existing results and input. Personal-note errors return their own preserved-value form (400/403/404/503) for outerHTML swap. Unexpected errors display a safe operation reference; no raw traceback/provider content is sent to the UI. Older read-route failures can return safe 500 fragments.
 
-No authentication is required.
+`429` includes `Retry-After: 60` for the local request-rate gate. `/query` allows 30/minute; roundtable/retry/follow-up/resume dispatch routes allow 10/minute. Provider limits and retry times are distinct and recorded with partial work. Polling does not reset provider work or spending bounds.
 
-## CSRF Protection
+## Generate and recover
 
-POST requests require a CSRF token. The app uses a double-submit cookie:
-
-1. `GET /` sets a `csrf_token` cookie.
-2. Include `csrf_token` as a form field in each POST.
-
-The browser UI handles this automatically.
-
-## Rate Limiting
-
-- **/query:** 30 requests per minute
-- **/roundtable:** 10 requests per minute
-
-## Content Types
-
-- **GET responses:** `text/html`
-- **POST requests:** `application/x-www-form-urlencoded`
-
-## Error Responses
-
-Errors return an HTML partial (`partials/error.html`) with a human-readable message.
-
----
-
-## Endpoints
-
-### 1) Index
-
-**GET** `/`
-
-Returns the main HTML UI.
-
----
-
-### 2) Multi-Expert Query
-
-**POST** `/query`
-
-**Form Fields:**
-
-| Field | Type | Required | Description |
-|------|------|----------|-------------|
-| `query` | string | Yes | User question |
-| `roles` | string (multi) | Yes | Distinct advisor role keys from the chosen panel |
-| `panel_id` | string | No | Panel ID, defaults to `agriculture`; see the panel tables below |
-| `csrf_token` | string | Yes | CSRF token from cookie |
-
-**Response:** HTML partial (`partials/responses.html`)
-
----
-
-### 3) Roundtable Discussion
-
-**POST** `/roundtable`
-
-**Form Fields:**
-
-| Field | Type | Required | Description |
-|------|------|----------|-------------|
-| `query` | string | Yes | Discussion topic |
-| `roles` | string (multi) | Yes | Distinct advisor role keys from the chosen panel (min 2) |
-| `panel_id` | string | No | Panel ID, defaults to `agriculture`; see the panel tables below |
-| `rounds` | int | No | Discussion rounds (default 3) |
-| `csrf_token` | string | Yes | CSRF token from cookie |
-
-**Response:** HTML partial (`partials/roundtable.html`)
-
----
-
-### 4) Save Result
-
-**POST** `/save`
-
-**Form Fields:**
-
-| Field | Type | Required | Description |
-|------|------|----------|-------------|
-| `query` | string | Yes | Original query |
-| `result_type` | string | Yes | `query` or `roundtable` |
-| `responses` | JSON string | Cond. | Required when `result_type=query` |
-| `roundtable_data` | JSON string | Cond. | Required when `result_type=roundtable` |
-| `advisor_context` | JSON string | No | Captured panel `{id,label}` and ordered `advisors` definitions `{role,label,system_prompt,limitations}` from the generated result; omitted for legacy results |
-| `csrf_token` | string | Yes | CSRF token from cookie |
-
-**Response:** HTML partial (`partials/save_success.html`)
-
----
-
-### 5) History
-
-**GET** `/history`
-
-Returns a list of recent saved results as an HTML partial.
-
----
-
-### 6) Result by ID
-
-**GET** `/result/{result_id}`
-
-Returns a saved result as an HTML partial (`responses` or `roundtable`).
-
----
-
-### 7) Export Result
-
-**GET** `/export/{result_id}`
-
-Returns a Markdown file download.
-
----
-
-### 8) Export Executive Brief
-
-**GET** `/export/{result_id}/brief`
-
-Returns an HTML executive brief rendered locally by `lib/services/briefing_service.py` and its Jinja2 template. Markdown and HTML exports use saved data and captured prompts; neither invokes a provider.
-
----
-
-## Expert Roles
-
-| Key | Expert Title |
-|-----|-------------|
-| `agriculture` | Agricultural Science Expert |
-| `climate` | Climate Change Impact Analyst |
-| `commodities` | Commodities Trading Specialist |
-| `agritech` | AgriTech Innovation Researcher |
-| `supplychain` | Food Supply Chain Analyst |
-| `soil` | Soil Health Specialist |
-| `pest` | Pest & Disease Management Expert |
-| `irrigation` | Irrigation & Water Management Specialist |
-| `organic` | Organic Farming Consultant |
-| `economics` | Agricultural Economics Advisor |
-
----
-
-## curl Example (Advanced)
-
-The UI is the intended interface. If you want to POST manually:
-
-```bash
-curl -c cookies.txt http://localhost:8123/ >/dev/null
-CSRF_TOKEN=$(awk '/csrf_token/ {print $7}' cookies.txt)
-
-curl -b cookies.txt -X POST http://localhost:8123/query \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  --data-urlencode "query=What are the best practices for soil conservation?" \
-  --data-urlencode "roles=agriculture" \
-  --data-urlencode "csrf_token=$CSRF_TOKEN"
-```
-
-## Software advisor roles
-
-Submit `panel_id=software` with any of these roles:
-
-- `software_architecture` — Software Architecture Advisor
-- `software_implementation` — Software Implementation Advisor
-- `software_testing` — Software Testing Advisor
-- `software_security` — Software Security Advisor
-- `software_accessibility` — Software Accessibility Advisor
-
-Unknown panels, mismatched roles, and duplicate role selections return HTTP 400 before provider calls. Agriculture retains its original keys. Panel IDs and membership come from `lib/experts/definitions/panels.json`.
-
-Save the `advisor_context` supplied with a generated result, rather than reconstructing it from the current catalog. It is optional for backward compatibility; omitted context stays unknown. Snapshots follow the existing client-submitted result flow and are not cryptographic provenance.
-
-## Decision-support panels
-
-| Panel ID | Label | Roles |
-|---|---|---|
-| `ai_workflow` | AI Workflow & Delegation | `ai_workflow_workflow_designer`, `ai_workflow_delegation_planner`, `ai_workflow_privacy_reviewer`, `ai_workflow_recovery_reviewer` |
-| `accessibility_effort` | Accessibility & Effort | `accessibility_effort_voice_workflow`, `accessibility_effort_interaction_reviewer`, `accessibility_effort_effort_reduction`, `accessibility_effort_fallback_planner` |
-| `evidence_judgment` | Evidence & Judgment | `evidence_judgment_claim_examiner`, `evidence_judgment_source_reviewer`, `evidence_judgment_alternative_explanations`, `evidence_judgment_uncertainty_reviewer` |
-
-Use these IDs in the existing `panel_id` form field. Standalone decision-panel answers request a four-bullet Decision Check. In roundtables, their contribution prompts request at most two short bullets, omit individual Decision Checks and user questions, and ask later turns to add only new information. These are model instructions, not a guarantee of output quality or exact word counts.
-
-### Structured synthesis formats
-
-`consensus_brief` is saved with the roundtable result. Its shape depends on the built-in panel:
-
-| Panel | Format and required content |
-|---|---|
-| `ai_workflow` | `synthesis_format: "workflow_handoff"`; `task_packet`, `review_checklist`, `resume_checkpoint`, `success_measure`, `compact_ending` |
-| `accessibility_effort` | `synthesis_format: "accessibility_handoff"`; `starter_template`, `resume_checkpoint`, `dictation_fallback`, `first_trial`, `compact_ending` |
-| `evidence_judgment` | General consensus fields plus `compact_ending` |
-| `agriculture`, `software` | General consensus fields; no required Decision Check |
-
-The general fields are `governing_insight`, `executive_summary`, `key_findings`, `decision_implications`, `recommendations`, and `limitations`. The `synthesis_format` discriminator is added locally after a valid handoff response; it is not an extra provider-supplied field.
-
-Workflow `review_checklist` contains 2–4 objects with nonempty `check` and `evidence_target` strings (maximum 180 characters each). Handoff text fields are bounded: the packet or starter has a 900-character maximum, and each checkpoint, success measure, fallback, or first-trial field has a 500-character maximum. `compact_ending` contains nonempty strings `recommended_next_step`, `strongest_objection`, `unknowns`, and `user_decision`; the requested schema caps each at 180 characters. Accessibility synthesis requests at most one essential user choice, only if it blocks the first trial; otherwise it requests “No decision needed yet.”
-
-Invalid or empty structured synthesis, and provider rejection of structured output with HTTP 400/422, can use one plain-text synthesis fallback with the panel's instructions. A plain-text fallback has no structured `consensus_brief`; its `final_answer` is retained. Rate limits, connection errors, and other provider failures do not trigger that text fallback. Structured and correctly formatted plain-text Decision Checks are captured in exports. Legacy payloads remain supported; export does not rewrite older wording or invent absent closing points.
-
-Accessibility advisor and moderator instructions use only the original user's explicit confirmation as evidence of configured, working capabilities. Requested features and advisor proposals do not establish a voice command, alias, macro, automatic save, or restoration mechanism. When setup is unknown, guidance requests plain reusable text and safe-pause steps, without assuming that generating a checkpoint saves it. This applies to structured and plain-text synthesis and to captured discussion retries; it is prompt guidance, not a factual validator or proof of model adherence.
-
-The catalog accepts `response_format=compact_decision` or `workflow_handoff`. The latter adds delegation-specific guidance to an advisor; it does not assign a custom panel the built-in AI Workflow synthesis layout. Direct service callers without panel context can infer a handoff from a homogeneous set of workflow or accessibility roles. Web callers supply captured panel context explicitly.
-
-## Retry a partial roundtable
-
-**POST** `/roundtable/retry` accepts `state` (the JSON hidden field supplied with a roundtable result) and `csrf_token`. It retains the original question, advisor order, round count, captured prompts, completed contributions, and synthesis status. Only failed or unfinished contributions are requested again; synthesis is refreshed after those attempts. A synthesis-only failure retries synthesis without calling any advisor. A fully completed state is a no-op.
-
-Set `OPENROUTER_SYNTHESIS_MODEL` to route roundtable synthesis through a separate model; advisor requests continue to use `OPENROUTER_MODEL`. The selected synthesis model is stored with the result. A confirmed OpenRouter `upstream_provider_shared_pool` HTTP 429 during structured synthesis permits one same-model JSON-mode failover, excluding the reported saturated provider and including the original schema in the system instructions. Other 429s do not trigger failover. If this attempt also fails, further calls pause, including the text-synthesis fallback. `Retry-After` seconds or an HTTP date sets `retry_at` (Unix seconds); without a usable header the pause is 60 seconds. The UI counts down and the retry service also checks the deadline. There are no other automatic provider retries; the default countdown is a minimum pause, not a provider recovery estimate. Non-rate-limit contribution failures can still yield an explicitly partial synthesis from successful contributions only.
-
-Transcript entries now include `role` and `status` (`success`, `failed`, or `pending`), with structured `failure` details on failed entries. Top-level `synthesis_error`, `synthesis_stale`, `retry_at`, `compact_ending`, and the synthesis model used are preserved on Save. Legacy transcript errors are upgraded when reopening or retrying an older result. Captured advisor prompts are reused when available; older results without them use the current advisor definitions.
-
-The captured prompt is the advisor profile, not the complete provider request. Current roundtable instructions and moderator rules are applied on retry; a saved snapshot does not prove the exact historical request envelope. Empty plain-text synthesis is an error and leaves the discussion retryable without regenerating successful contributions.
-
-A retried result is shown as unsaved, so **Save Result** creates a new saved version and leaves the earlier saved record intact. The retry request uses its captured state, regardless of changes to the sidebar question or panel. Validation and CSRF errors target the retry status area so the visible answers remain intact. The endpoint has the same 10/minute app limit as the initial roundtable endpoint.
-
-
-## Personal saved work
-
-These routes return HTML fragments for the local app and never call advisors.
-
-| Route | Behavior |
+| Method/path | Inputs / behavior |
 | --- | --- |
-| `GET /history?q=phrase&offset=0` | Case-insensitive search across all saved metadata and personal notes, followed by stable pagination. Ten matching rows are shown. Empty search lists recent work. |
-| `GET /resume?result_id=ID` | Opens the saved return-point summary and up to three explicitly waiting/undecided items. A missing result returns a marker so the browser can forget that return ID. |
-| `POST /result/ID/notes` | Saves optional user annotations separately from generated content. |
+| `GET /` | Full page; optional validated `result_id` opens saved work. |
+| `POST /query` | `query`, repeated `roles`, `panel_id`, CSRF; create individual answers. |
+| `POST /roundtable` | Same plus `rounds` (1–5, clamped); needs at least two distinct roles. |
+| `POST /roundtable/retry` | Legacy JSON `state` plus CSRF and uncertain-work acknowledgement when needed; starts a durable recovery run retaining successes. |
+| `GET /runs` | Latest 20 working runs, no dispatch. |
+| `GET /runs/{id}` | Checkpoint/status partial; browser polls active runs every two seconds. |
+| `POST /runs/{id}/pause` | CSRF; prevents new calls after already dispatched work. |
+| `POST /runs/{id}/resume` | CSRF and `acknowledge=true` when earlier work is uncertain; manual bounded attempt. |
+| `GET /followup/{result_id}` | Preview selected context, bounded prior-result excerpt and optional outcome. |
+| `POST /followup/{result_id}` | New `query`; booleans `include_context`, `include_result`, `include_outcome`; editable `prior_excerpt`; CSRF. Starts linked background work. |
+| `POST /result/{id}/retry` | CSRF and `acknowledge=true` for uncertain prior remote work; creates a linked recovery version with completed answers reused. |
 
-The notes form submits `title`, `status`, `next_step`, `last_step`, `blocker`, `outcome`, and the existing `csrf_token`. Blank fields are valid; omitted form fields default to blank. Status accepts blank, `undecided`, `decided`, `waiting`, or `tried`. Limits are title 200 characters, next/last/blocker 2000 each, and outcome 4000.
+Generation accepts JSON-encoded `task_brief` (optional string fields: goal, decision, constraints, location_date, deliverable, background) and `sources` (list of label, passage, reference, date). A maximum of eight sources, 12,000 characters per passage, and 24,000 combined passage characters applies. Source IDs are assigned in captured order; present archive IDs must match that order. A reference is not fetched. Task fields allow 4,000 characters each; question allows 24,000. Model overrides `advisor_model` and `synthesis_model` are optional valid provider IDs; chosen models are captured at run creation. `parent_result_id` records deliberate lineage.
 
-Success returns the updated personal-notes fragment with `HX-Trigger: resultSaved`. Invalid fields return 400, a changed/missing CSRF token returns 403, a missing saved result returns 404, and storage failure returns 503. Each error fragment retains the submitted text; the browser opts in to swapping only these note fragments. The session token is renewed for a deliberate retry when needed. No error changes saved advisor content.
+`background=true` returns a working-run fragment immediately; the UI uses it. API compatibility defaults to waiting for the bounded attempt. Optional `submission_key` deduplicates the same submitted state. A new key deliberately creates a new run. Normal generation requires roles from the selected validated panel; current plans cap roles at ten and reserve bounded synthesis-fallback capacity.
 
-Generated content stays in `query_history`; annotations use the additive `personal_annotations` collection with no embedding function or documents. Existing Markdown and HTML exports continue to represent the saved generated result, without mixing in later personal notes.
+Defaults: 32 provider dispatches over the run including retries/fallback, 600 seconds per attempt, three manual attempts, 1,800 output tokens per call, and 120,000 prompt characters. Installation limits are documented in `.env.example`. Pause cannot revoke remote work. A pre-dispatch receipt, crash, or transport uncertainty is not proof of provider completion; manual resume acknowledgement protects against silent duplicate work.
+
+## Save, annotate, find and organize
+
+| Method/path | Contract |
+| --- | --- |
+| `POST /save` | Preferred: `run_id` and CSRF. Reads the authoritative journal, refuses active state, validates before writing. Optional `save_key` supports compatibility idempotency. |
+| `POST /save` (legacy) | `query`, `result_type=query` and JSON `responses`, or `result_type=roundtable` and JSON `roundtable_data`; optional JSON `advisor_context`; CSRF. Validated imported client content is not authenticated generation provenance. |
+| `GET /history` | `q`, nonnegative `offset`; filters `panel` (captured label), `status`, `tag`, ISO date `after`/`before`, `archived=true`. Searches all metadata and notes, not answer bodies. Ten-row UI pages, pinned first. |
+| `GET /result/{id}` | Saved fragment with separate notes, captured evidence and controls; missing=404, corrupt=422. |
+| `GET /work/{id}` | Full-page local return link, no provider call. |
+| `GET /resume` | Optional `result_id`, otherwise unfinished-item choices; no provider call. |
+| `POST /result/{id}/notes` | `title`, `status`, `next_step`, `last_step`, `blocker`, `outcome`, `outcome_rating`, CSRF. Source content stays immutable. |
+| `POST /result/{id}/organize` | Comma-separated `tags` (12 max, 40 characters each), booleans `pinned`/`archived`, CSRF. Archive is reversible. |
+
+Save success replaces only the named `.responses-header` or `.roundtable-header` via outerHTML and emits `resultSaved`. Save errors preserve that header/button and answer content. New IDs use full UUIDs or content-derived Save IDs; old short IDs remain valid. Repeat Save of the same keyed checkpoint returns the same logical record; changed checkpoint content is a separate version.
+
+Note status is blank, undecided, decided, waiting, or tried. Outcome rating is blank, helped, needed_correction, not_useful, or not_tried. Limits: title 200; next/last step and blocker 2,000 each; outcome 4,000. Notes are not automatically submitted to providers or included in ordinary exports.
+
+## Reuse and deterministic tools
+
+| Method/path | Contract |
+| --- | --- |
+| `GET /library` | Reusable local starters/context, latest 100 comparison choices, quality cases and local tools; no dispatch. |
+| `POST /library/{starter|context}` | `name`, `content`, CSRF; starters also use panel/role selections. Copies are selected into visible input deliberately. |
+| `POST /source/excerpt` | Multipart `file` (`.txt`/`.md`, UTF-8, up to 100 KB), CSRF. Preview only; user chooses a bounded excerpt to add. |
+| `GET /compare` | Required saved IDs `left`/`right`; compare inputs, profiles, receipts, outputs, personal evaluation. No automatic model rerun or score. |
+| `POST /calculate/effort` | Enter minutes `manual`, `setup`, `review`, `correction`, `recovery`, CSRF. Decimal arithmetic; no quality/medical-benefit inference. |
+| `GET /local-status` | Application/version/PID/managed instance nonce for loopback launcher identity. |
+
+## Exports and additive import
+
+| Method/path | Output |
+| --- | --- |
+| `GET /export/{id}` | Complete Markdown: exact question, full answers/transcript/synthesis, sources, profiles, recovery metadata. Notes excluded. |
+| `GET /export/{id}/brief` | HTML executive brief, explicitly abridged. |
+| `GET /export/{id}/brief.md` | Abridged Markdown brief. |
+| `GET /export/{id}/json` | Versioned complete JSON archive; optional `include_notes=true` deliberately adds annotations. |
+| `GET /export/{id}/report` | Complete decision report; optional `include_notes=true` adds separately labeled user notes/outcome. |
+| `POST /archive/preview` | Multipart JSON `file` up to 5 MB, CSRF. Validate all rows before making a local preview; no saved-history mutation. |
+| `POST /archive/import/{preview_id}` | CSRF; confirm additive import. Existing matching content/notes retained; conflicting IDs receive a new ID. Retry is safe for completed rows. |
+
+Archive envelope: `{"archive_format":"ai-advisors","archive_version":1,"records":[{"result":{...},"annotations":{...}}]}`. One to 1,000 rows; annotations optional. Saved result schema is version 3; bounded readable versions 1/2 remain supported. Unsupported versions fail with an actionable error. Captured profiles, actual supplied source cards, optional structured synthesis and execution receipts remain distinct. A complete record can contain private content; no credentials are intentionally included. Backups containing `.env` are a separate private operation.
+
+See [recovery](docs/RECOVERY.md) and [remediation evidence](docs/REMEDIATION-STATUS.md). These contracts describe prepared source, not a claim that the owner gate or real browser/provider acceptance has passed.

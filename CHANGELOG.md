@@ -2,7 +2,19 @@
 
 Notable changes to AI Advisors. Entries below 2.1.0 retain the project's earlier name and history.
 
-## [Unreleased] — 2.1.0 candidate
+## [Unreleased] — October 25 repair and local workflow expansion (verified October 26, 2026)
+
+Owner verification completed for targeted regressions, Mypy typing across 11 files, 17 headless JavaScript checks, configuration/dependency diagnostics, stopped-app backup, managed startup, live connectivity diagnostic, and an authorized read-only browser pass (with 4 UI/focus fixes). Broader personal workflow acceptance and real-data restore rehearsal remain pending. See [current remediation status](docs/REMEDIATION-STATUS.md).
+
+- Fix result-preserving Save errors, invalid provider content, strict saved-record/import boundaries and complete archival exports.
+- Add bounded durable working runs, pre-dispatch receipts, manual pause/recovery, idempotency and explicit retry lineage.
+- Remove embedding-model dependency from new saves using a separate collection; keep legacy records read-only and notes separate.
+- Add selected task/source context, reusable text, linked follow-ups, options/disagreement views, organization, comparison, reports, archive preview/import, a measured-minutes calculator and fictional quality cases.
+- Add root-anchored loopback operations, private stopped-app backup/new-location restore, offline diagnostics and owner-invoked verification.
+- Vendor browser dependencies with licenses, improve Candlelight text/targets/tables/milestone feedback/note-draft recovery, and reconcile architecture/contribution/status documentation.
+- Keep Python runtime dependencies and lockfile unchanged. The agent did not open or migrate existing production history. Browser/local/provider/restore acceptance remains separate.
+
+## Historical — 2.1.0 candidate through October 16
 
 Release evidence and remaining acceptance checks are recorded in [release readiness](docs/RELEASE-READINESS.md). This candidate has not been published.
 
@@ -10,7 +22,7 @@ October 16 local personal-use implementation: captured summaries before full res
 
 Automated acceptance before the trial corrections on 2026-10-15: 139 cases passed in the full run, followed by 3 passing route cases after a test-only snapshot-assertion correction. Targeted results for the subsequent corrections below passed (97 targeted in 2.47s; 151 full suite in 3.18s on 2026-10-15). Live output and personal acceptance are recorded separately in the readiness note.
 
-Live trial `953adc1d` completed save/reopen and both exports on 2.1.0. It exposed assumed voice/alias capabilities, a lost accessible region name after Save, and a missing Executive Brief control after replay. All three corrections are implemented in source; the saved trial remains unchanged. At the October 15 checkpoint no further live roundtable had run. Subsequent October 16 observations are recorded in the month plan; personal acceptance remains open.
+Live trial `953adc1d` completed save/reopen and both exports on 2.1.0. It exposed assumed voice/alias capabilities, a lost accessible region name after Save, and a missing Executive Brief control after replay. All three corrections are implemented in source; the saved trial remains unchanged. At the October 15 checkpoint no further live roundtable had run. Subsequent October 16 notes/search/immediate reload observations are recorded in the month plan; they do not establish every input method or a measured after-break return.
 
 ### Added
 

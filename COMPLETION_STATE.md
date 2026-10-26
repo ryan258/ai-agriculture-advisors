@@ -1,5 +1,8 @@
 # Completion State
 
+> Historical April 1, 2026 / 2.0.0 snapshot. It is not current readiness evidence. See [current remediation status](docs/REMEDIATION-STATUS.md) and the [October 25 baseline review](docs/PROJECT-REVIEW-2026-10-25.md).
+
+
 **Status:** Complete for personal-use release  
 **Analysis Date:** 2026-04-01  
 **Version:** 2.0.0 (FastAPI + Jinja2 + HTMX + ChromaDB)

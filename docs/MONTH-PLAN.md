@@ -1,5 +1,8 @@
 # AI Advisors 30 Day Work Plan
 
+**Historical plan with October 26 reconciliation.** Engineering completion, October 26 owner automated gates, stopped-app backup, managed startup, and authorized read-only browser pass are recorded. Personal workflow acceptance, actual after-break effort, and individual unchecked tasks remain open. See [Remediation status](REMEDIATION-STATUS.md).
+
+
 Prepared for Ryan on October 16, 2026. Remaining engineering work was implemented together at Ryan's request on October 16. The numbered sessions remain a sequence for personal trials and review; a missed day does not create catch-up work. Implementation does not stand in for a month of observed use.
 
 The goal is a local tool you can use to bring a messy question, get a manageable next action, save your own decision, and return later with little reconstruction. Daily use should guide the changes. A smaller tool that works for you is a successful month.
@@ -345,7 +348,7 @@ Day 28 outcome (2026-10-16): Ryan tested the complete personal workflow using sa
 uv run --locked pytest -q
 ```
 
-Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 144 targeted Python tests passed in 4.07s across storage, personal history, workspace routes, summary rendering, routes, decision panels, retry, catalog, and briefing; 12 headless JavaScript tests passed. Independent final source review found no remaining concrete defects after three integration findings were corrected. JavaScript syntax and whitespace checks passed. Full locked suite rerun by Ryan on 2026-10-16: 182 passed in 4.14s. GitNexus reindexed (977 nodes). Real browser interaction, search, and cold-return verified by Ryan on 2026-10-16.
+Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 144 targeted Python tests passed in 4.07s across storage, personal history, workspace routes, summary rendering, routes, decision panels, retry, catalog, and briefing; 12 headless JavaScript tests passed. Independent final source review found no remaining concrete defects after three integration findings were corrected. JavaScript syntax and whitespace checks passed. Full locked suite rerun by Ryan on 2026-10-16: 182 passed in 4.14s. GitNexus reindexed (977 nodes). Ryan recorded notes, search and immediate reload-resume on 2026-10-16. The recorded observation does not establish a real break or every input method.
 
 **Done when:** the final revision has relevant evidence and a concise list of any remaining limits. **Low capacity:** the agent prepares the checks and leaves your run or observation pending.
 
@@ -356,7 +359,7 @@ Implementation record (2026-10-16): Current implementation gate on 2026-10-16: 1
 - [x] **Ryan:** decide whether this is useful enough for your routine, needs one more bounded correction, or should pause. A short answer is enough.
 - [x] **Agent:** leave one next action and at most three worthwhile future improvements. Keep unfinished work explicit. End with a brief handoff; Git and publishing actions remain separate requests.
 
-Implementation record (2026-10-16): Updated README, roadmap, release evidence, API details, and the personal-use/restart checklist. Engineering implementation is complete within the bounded scope. Ryan verified the loop in browser ("I think it looks good"). All 30 days of tasks are complete.
+Implementation record (2026-10-16): Updated README, roadmap, release evidence, API details, and the personal-use/restart checklist. Engineering implementation is complete within the bounded scope. Ryan verified the loop in browser ("I think it looks good"). The bounded implementation and saved-work loop were accepted; unchecked individual observations remain pending.
 
 **Done when:** you can return without reconstructing the month and know what comes next. **Low capacity:** record the next action and pause; documentation can finish in a later session.
 
@@ -370,12 +373,12 @@ Defer richer progress updates, a redesigned home screen, separate outcome fields
 
 Update this small record when work is requested. Keep technical detail in the relevant task or evidence note. No daily journal is required.
 
-- **Current session:** Complete 30-day plan verified and accepted on 2026-10-16.
-- **Last completed:** Ryan's personal acceptance test on localhost:8123 (title, status, next step, search, reload and resume verified; verdict: "I think it looks good").
-- **Next action:** Use AI Advisors for routine decision support and delegation tasks.
-- **Waiting on:** None.
-- **Latest result or evidence:** Full locked suite 182 passed in 4.14s on 2026-10-16; 144 targeted Python passes; 12 headless JavaScript passes; GitNexus indexed (977 nodes); personal browser pass verified.
-- **Recovery:** private stopped-app snapshot at `.local-backups/month-20261016-171319`; see [Personal use check](PERSONAL-USE-CHECK.md) before restoring.
+- **Session state:** October 26, 2026; repair and local workflow patch implemented and verified by owner-run gates.
+- **Last completed:** Owner automated gates passed (targeted Python, Mypy typing across 11 files, 17 headless JS), doctor checks, stopped-app backup, managed startup at localhost:8123, one-request live connectivity diagnostic, and authorized read-only browser pass (4 UI fixes verified).
+- **Next action:** Personal workflow trial using a question Ryan can assess or a fictional case from the quality pack.
+- **Remaining observations:** Broader personal acceptance, live synthesis model quality, real restore rehearsal, and dictation/print remain separate.
+- **Latest result or evidence:** Targeted regression passed, Mypy 0 errors, 17/17 headless JS passed, GitNexus indexed (1,321 nodes), read-only browser inspection clean.
+- **Recovery:** Private stopped-app snapshot at `.local-backups/advisors-20261026T145305Z-928b9a`; see [Recovery](RECOVERY.md) and [Remediation status](REMEDIATION-STATUS.md).
 
 Suggested stop record: `Day [number] | Done: [last completed action] | Next: [one action] | Waiting: [blocker or none] | Evidence: [reference or not checked]`.
 
@@ -386,7 +389,7 @@ Suggested stop record: `Day [number] | Done: [last completed action] | Next: [on
 - [x] Saving, reopening, and exporting preserve the answer without a new model call.
 - [x] Partial failure leaves completed work intact and offers a scoped next action.
 - [x] I can find an older result and see my own saved next step.
-- [x] After a break, I can resume one real task with less reconstruction than at the start of the month, or state precisely what still gets in the way.
+- [ ] After a real break, observe whether one saved task needs less reconstruction; the recorded immediate reload does not close this observation.
 - [x] Historical results remain readable, and my notes do not rewrite generated advice.
 - [x] Documentation distinguishes implemented behavior, tested behavior, personal observations, and remaining work.
 

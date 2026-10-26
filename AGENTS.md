@@ -17,7 +17,7 @@
 
 - **Forbidden Tech**:
   - ❌ Docker / Kubernetes
-  - ❌ React / Vue / Angular / Node.js
+  - ❌ React / Vue / Angular / Node.js application runtime or build
   - ❌ Microservices
   - ❌ Complex Auth (OAuth/JWT)
   - ❌ User Accounts
@@ -59,10 +59,22 @@
 
 - One clean move to simplify.
 
+## Personal operating intent and verification
+
+This is a production-quality local, single-user personal accessibility tool. Favor short entrypoints, visible evidence, reliable saves, explicit provider requests, and interruption recovery. No hosted accounts, billing, multi-user infrastructure, deployment, or publication is implied by professional-quality output.
+
+Node is permitted for development-only GitNexus and standard-library headless JS checks; it is not an application dependency. The current launcher is `./advisors`; keep `./start.sh` compatible. Do not overwrite an existing `.env` or modify real saved data for verification.
+
+Ryan runs tests, full suites, long commands, and `gitnexus analyze` when requested. For the October 25 accumulated patch, provide `./advisors check` and await his output; do not execute it for him. Read-only graph impact and native source tracing remain useful. Browser verification requires Ryan's authorization; preserve historical results with their dates and do not claim they verify new code.
+
+## Source change checks
+
+Trace affected imports, callers, routes, templates, and focused tests with native repository searches and source reads before editing. Keep unresolved references explicit and follow Ryan's current verification instructions. Staging, commits, pushes, deployment, and publication require his explicit delegation of that action.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **ai-agriculture-advisors** (607 symbols, 1235 relationships, 41 execution flows).
+This project is indexed by GitNexus as **ai-agriculture-advisors** (969 symbols, 2263 relationships, 73 execution flows).
 
 > Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
 
