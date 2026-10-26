@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ brief.title }} | {{ brief.publication_label }}</title>
+    <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/brief.css">
 </head>
 <body>
@@ -226,8 +227,8 @@
         {% if brief.sources %}
         <section class="brief-section">
             <div class="section-heading compact">
-                <p class="section-kicker">Sources</p>
-                <h2>Inputs Used</h2>
+                <p class="section-kicker">AI participants</p>
+                <h2>Generated Inputs Used</h2>
             </div>
             <ul class="source-list">
                 {% for source in brief.sources %}
@@ -236,6 +237,9 @@
             </ul>
         </section>
         {% endif %}
+        {% if brief.supplied_sources %}<section class="brief-section"><h2>Supplied source excerpts</h2>{% for source in brief.supplied_sources %}<h3>[{{ source.id }}] {{ source.label }}</h3><p>{{ source.reference }} · {{ source.date or 'Date unknown' }}</p><blockquote style="white-space: pre-wrap; overflow-wrap: anywhere">{{ source.passage }}</blockquote>{% endfor %}</section>{% endif %}
+        {% if brief.decision_analysis.options %}<section class="brief-section"><h2>Options and tradeoffs</h2><table class="recommendation-table"><caption>Generated comparison against supplied context</caption><thead><tr><th scope="col">Option</th><th scope="col">Benefits</th><th scope="col">Tradeoffs</th><th scope="col">Unknowns</th></tr></thead><tbody>{% for option in brief.decision_analysis.options %}<tr><th scope="row">{{ option.option }}</th><td>{{ option.pros | join('; ') }}</td><td>{{ option.cons | join('; ') }}</td><td>{{ option.unknowns | join('; ') }}</td></tr>{% endfor %}</tbody></table></section>{% endif %}
+        {% if brief.decision_analysis.disagreements %}<section class="brief-section"><h2>Unresolved disagreement</h2>{% for item in brief.decision_analysis.disagreements %}<h3>{{ item.point }}</h3><p>{{ item.viewpoints | join('; ') }}</p><p>Next check: {{ item.check }}</p>{% endfor %}</section>{% endif %}
         {% if brief.advisor_context %}
         <section class="brief-section">
             <div class="section-heading compact">

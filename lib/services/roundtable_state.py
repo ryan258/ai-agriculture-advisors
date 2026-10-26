@@ -13,10 +13,14 @@ from lib.engine.llm_client import provider_error_metadata
 from lib.experts import get_expert
 from lib.experts.base import Expert
 from lib.experts.catalog import validate_advisor_context
+from lib.engine.execution import RunStopped
+from lib.contracts import MAX_QUESTION, MAX_TEXT
 
 
 def failure_details(error: Exception) -> dict[str, Any]:
     """Retain retry guidance without displaying provider URLs or raw tracebacks."""
+    if isinstance(error, RunStopped):
+        return {"kind": "paused", "message": str(error)}
     if isinstance(error, httpx.HTTPStatusError):
         status = error.response.status_code
         if status == 429:
@@ -99,11 +103,11 @@ def normalize_roundtable_state(value: Any) -> dict[str, Any]:
         state.get("roles", state.get("experts")),
         state.get("rounds"),
     )
-    if not isinstance(query, str) or not query.strip():
+    if not isinstance(query, str) or not query.strip() or len(query) > MAX_QUESTION:
         raise ValueError("The original roundtable question is missing.")
     if (
         not isinstance(roles, list)
-        or not 2 <= len(roles) <= 64
+        or not 2 <= len(roles) <= 10
         or not all(isinstance(role, str) for role in roles)
         or len(set(roles)) != len(roles)
     ):
@@ -140,6 +144,7 @@ def normalize_roundtable_state(value: Any) -> dict[str, Any]:
             or type(entry.get("round", round_num)) is not int
             or entry.get("round", round_num) != round_num
             or not isinstance(entry.get("text"), str)
+            or len(entry.get("text", "")) > MAX_TEXT
         ):
             raise ValueError(
                 "Transcript entries must match the original advisor and round order."
@@ -218,7 +223,9 @@ def roundtable_view(state: dict[str, Any]) -> dict[str, Any]:
         "missing_responses": missing,
         "completed_responses": len(state["transcript"]) - missing,
         "retry_wait": max(0, math.ceil(state["retry_at"] - time.time())),
-        "can_retry": bool(missing or state.get("synthesis_error")),
+        "can_retry": bool(
+            missing or state.get("synthesis_error") or state.get("synthesis_stale")
+        ),
     }
 
 

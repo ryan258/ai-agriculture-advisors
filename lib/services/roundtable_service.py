@@ -9,6 +9,18 @@ import httpx
 from lib.experts import get_expert
 from lib.engine.config import get_settings
 from lib.engine.llm_client import get_llm_client
+from lib.engine.execution import (
+    RunStopped,
+    checkpoint,
+    current_execution,
+    dispatched_question,
+)
+from lib.contracts import validate_schema
+from .consensus_contracts import (
+    decision_schema,
+    normalize_extensions,
+    validate_text_citations,
+)
 from lib.experts.response_format import (
     ACCESSIBILITY_CAPABILITY_INSTRUCTIONS,
     COMPACT_DECISION_FORMAT,
@@ -214,6 +226,7 @@ def _uses_accessibility_handoff(state: dict[str, Any]) -> bool:
 async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
     """Fill only missing slots, then synthesize. Never regenerate a successful answer."""
     state = normalize_roundtable_state(value)
+    await checkpoint(state)
     if state["retry_at"] > time.time():
         return state
     if (
@@ -259,13 +272,14 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
         )
         try:
             response = await expert.contribute_to_discussion(
-                query=state["query"],
+                query=dispatched_question(state["query"]),
                 transcript=transcript_text,
                 round_num=entry["round"],
                 compact_roundtable=compact_ending,
             )
             if not response.strip():
                 raise ValueError("Empty advisor response")
+            validate_text_citations(response)
             state["transcript"][index] = {
                 "role": role,
                 "speaker": expert.label,
@@ -275,6 +289,7 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
             }
             changed = True
             logger.info("Roundtable: %s contributed in round %s", role, entry["round"])
+            await checkpoint(state)
         except Exception as error:
             failure = failure_details(error)
             entry.update(
@@ -283,6 +298,13 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
             logger.warning(
                 "Roundtable contribution failed for %s: %s", role, failure["kind"]
             )
+            if failure["kind"] == "paused":
+                entry.update(status="pending", text="")
+                entry.pop("failure", None)
+                state["synthesis_error"] = failure
+                await checkpoint(state)
+                return state
+            await checkpoint(state)
             if failure["kind"] == "rate_limit":
                 state["retry_at"] = failure["retry_at"]
                 state["synthesis_error"] = {
@@ -292,6 +314,7 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
                 state["synthesis_stale"] = bool(state.get("final_answer")) and (
                     changed or state.get("synthesis_stale", False)
                 )
+                await checkpoint(state)
                 return state
     if not successful_entries(state["transcript"]):
         state["synthesis_error"] = {
@@ -300,11 +323,16 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
         }
         return state
     settings = get_settings()
-    synthesis_model = settings.openrouter_synthesis_model or settings.openrouter_model
+    execution = current_execution.get()
+    synthesis_model = (
+        (execution.synthesis_model if execution else "")
+        or settings.openrouter_synthesis_model
+        or settings.openrouter_model
+    )
     state["synthesis_model"] = synthesis_model
     try:
         answer, brief = await _generate_consensus(
-            state["query"],
+            dispatched_question(state["query"]),
             state["transcript"],
             compact_ending=compact_ending,
             workflow_handoff=workflow_handoff,
@@ -326,6 +354,7 @@ async def retry_roundtable(value: dict[str, Any]) -> dict[str, Any]:
         if failure["kind"] == "rate_limit":
             state["retry_at"] = failure["retry_at"]
         logger.warning("Roundtable synthesis failed: %s", failure["kind"])
+    await checkpoint(state)
     return state
 
 
@@ -350,7 +379,8 @@ async def _generate_consensus(
     """
     completed = successful_entries(transcript)
     transcript_text = "\n".join(
-        f"{entry['speaker']}: {entry['text']}" for entry in completed
+        f"[R{entry.get('round', 1)}/{entry.get('role', '')}] {entry['speaker']}: {entry['text']}"
+        for entry in completed
     )
     if len(completed) != len(transcript):
         transcript_text = (
@@ -474,7 +504,8 @@ Requirements:
 - limitations: only include real uncertainty or missing evidence.
 """
         schema_name = "roundtable_consensus_brief"
-        schema = _ROUND_TABLE_CONSENSUS_SCHEMA
+        schema = decision_schema(_ROUND_TABLE_CONSENSUS_SCHEMA)
+        summary_prompt += "\nAlso return claims (supplied/inference/unknown with actual supplied source_ids), options only when the user supplied meaningful alternatives or criteria, and unresolved disagreements with attributed viewpoints, actual completed turn_ids such as R1/role_name from the transcript, and one distinguishing check. Use empty arrays when inapplicable. Generated persona agreement is not evidence. Never invent a source or turn ID; when no sources were supplied, source_ids must be empty."
         if compact_ending:
             schema = _schema_with_compact_ending(schema)
             moderator_prompt += (
@@ -507,8 +538,12 @@ Requirements:
             raise ValueError("Structured response omitted the Decision Check")
         if not _has_meaningful_consensus_brief(consensus_brief):
             raise ValueError("Structured consensus was semantically empty")
-        return _structured_consensus_to_markdown(consensus_brief), consensus_brief
+        rendered = _structured_consensus_to_markdown(consensus_brief)
+        validate_text_citations(rendered)
+        return rendered, consensus_brief
     except (httpx.HTTPError, ValueError) as e:
+        if isinstance(e, RunStopped):
+            raise
         if isinstance(e, httpx.HTTPError) and not (
             isinstance(e, httpx.HTTPStatusError)
             and e.response.status_code in (400, 422)
@@ -516,7 +551,7 @@ Requirements:
             raise
         logger.warning(
             "Structured consensus generation failed; falling back to plain-text synthesis: %s",
-            e,
+            type(e).__name__,
         )
 
     if workflow_handoff:
@@ -580,9 +615,10 @@ Be concise but comprehensive."""
         answer = response.strip()
         if not answer:
             raise ValueError("Plain-text synthesis was empty")
+        validate_text_citations(answer)
         return answer, None
     except (httpx.HTTPError, ValueError) as e:
-        logger.error(f"Error generating consensus: {e}")
+        logger.error("Consensus failed (%s)", type(e).__name__)
         raise
 
 
@@ -666,6 +702,44 @@ def _normalize_accessibility_handoff(
 
 
 def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("Consensus must be an object")
+    for key in ("governing_insight",):
+        if key in payload and (
+            not isinstance(payload[key], str) or not payload[key].strip()
+        ):
+            raise ValueError(f"Consensus {key} must contain usable text")
+    for key in (
+        "executive_summary",
+        "key_findings",
+        "decision_implications",
+        "recommendations",
+        "limitations",
+    ):
+        if key in payload and not isinstance(payload[key], list):
+            raise ValueError(f"Consensus {key} must be a list")
+    for key in ("executive_summary", "decision_implications", "limitations"):
+        if key in payload:
+            validate_schema(
+                payload[key],
+                {"type": "array", "maxItems": 100, "items": {"type": "string"}},
+                key,
+            )
+    for key, fields in (
+        ("key_findings", ("title", "claim", "implication")),
+        ("recommendations", ("owner", "action", "expected_impact", "key_risk")),
+    ):
+        for item in payload.get(key, []):
+            if not isinstance(item, dict) or any(
+                field in item and not isinstance(item[field], str) for field in fields
+            ):
+                raise ValueError(f"Consensus {key} contains invalid field types")
+            if "evidence_points" in item:
+                validate_schema(
+                    item["evidence_points"],
+                    {"type": "array", "maxItems": 100, "items": {"type": "string"}},
+                    "evidence_points",
+                )
     normalized: dict[str, Any] = {
         "governing_insight": str(payload.get("governing_insight", "")).strip(),
         "executive_summary": _clean_string_list(payload.get("executive_summary", [])),
@@ -698,6 +772,7 @@ def _normalize_consensus_brief(payload: dict[str, Any]) -> dict[str, Any]:
         normalized["compact_ending"] = normalize_compact_ending(
             payload["compact_ending"]
         )
+    normalized.update(normalize_extensions(payload))
     return normalized
 
 
@@ -802,6 +877,34 @@ def _structured_consensus_to_markdown(consensus_brief: dict[str, Any]) -> str:
         for item in limitations:
             lines.append(f"- {item}")
         lines.append("")
+
+    for claim in consensus_brief.get("claims", []):
+        lines.extend(
+            [
+                "",
+                f"- Claim ({claim['support']}): {claim['claim']} "
+                + " ".join(f"[{source}]" for source in claim["source_ids"]),
+            ]
+        )
+    for option in consensus_brief.get("options", []):
+        lines.extend(
+            [
+                "",
+                f"### Option: {option['option']}",
+                "Benefits: " + "; ".join(option["pros"]),
+                "Tradeoffs: " + "; ".join(option["cons"]),
+                "Unknowns: " + "; ".join(option["unknowns"]),
+            ]
+        )
+    for difference in consensus_brief.get("disagreements", []):
+        lines.extend(
+            [
+                "",
+                f"### Unresolved: {difference['point']}",
+                "; ".join(difference["viewpoints"]),
+                "Next check: " + difference["check"],
+            ]
+        )
 
     if consensus_brief.get("compact_ending"):
         lines.append(render_compact_ending(consensus_brief["compact_ending"]))

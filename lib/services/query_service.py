@@ -7,6 +7,7 @@ from typing import Dict, List, Any
 import httpx
 
 from lib.experts import get_expert
+from lib.engine.execution import checkpoint, current_execution, dispatched_question
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,14 @@ async def query_single_expert(role: str, query: str) -> Dict[str, Any]:
         Dict with role, label, and response or error
     """
     expert = get_expert(role)
+    execution = current_execution.get()
+    if execution:
+        from .roundtable_state import CapturedExpert
+
+        snapshots = (execution.state.get("advisor_context") or {}).get("advisors", [])
+        captured = next((item for item in snapshots if item["role"] == role), None)
+        if captured:
+            expert = CapturedExpert(captured)
     if not expert:
         return {
             "role": role,
@@ -31,7 +40,12 @@ async def query_single_expert(role: str, query: str) -> Dict[str, Any]:
         }
 
     try:
-        response = await expert.query(query)
+        response = await expert.query(dispatched_question(query))
+        if not isinstance(response, str) or not response.strip():
+            raise ValueError("Provider returned no usable text")
+        from .consensus_contracts import validate_text_citations
+
+        validate_text_citations(response)
         logger.info(f"Expert {role} responded successfully")
         return {
             "role": role,
@@ -39,14 +53,18 @@ async def query_single_expert(role: str, query: str) -> Dict[str, Any]:
             "response": response,
         }
     except (httpx.HTTPError, ValueError) as e:
-        logger.error(f"Error querying expert {role}: {e}")
+        from .roundtable_state import failure_details
+
+        failure = failure_details(e)
+        logger.error("Advisor %s failed (%s)", role, type(e).__name__)
         return {
             "role": role,
             "label": expert.label,
-            "error": str(e),
+            "error": failure["message"],
+            "failure": failure,
         }
     except Exception as e:
-        logger.exception(f"Unexpected error querying expert {role}: {e}")
+        logger.error("Unexpected advisor failure for %s (%s)", role, type(e).__name__)
         raise
 
 
@@ -65,7 +83,36 @@ async def query_experts(query: str, roles: List[str]) -> Dict[str, Any]:
         return {"query": query, "responses": []}
 
     # Create tasks for parallel execution
-    tasks = [query_single_expert(role, query) for role in roles]
+    execution = current_execution.get()
+    previous = (
+        {item.get("role"): item for item in execution.state.get("responses", [])}
+        if execution
+        else {}
+    )
+    completed: dict[str, Any] = {
+        role: item
+        for role, item in previous.items()
+        if item.get("response") and not item.get("error")
+    }
+
+    async def one(role: str) -> Dict[str, Any]:
+        if role in completed:
+            return completed[role]
+        result = await query_single_expert(role, query)
+        completed[role] = result
+        retry_at = max(
+            (item.get("failure", {}).get("retry_at", 0) for item in completed.values()),
+            default=0,
+        )
+        await checkpoint(
+            {
+                "responses": [completed[r] for r in roles if r in completed],
+                "retry_at": retry_at,
+            }
+        )
+        return result
+
+    tasks = [one(role) for role in roles]
 
     # Execute all queries in parallel
     responses = await asyncio.gather(*tasks, return_exceptions=True)
@@ -76,7 +123,6 @@ async def query_experts(query: str, roles: List[str]) -> Dict[str, Any]:
             logger.error(
                 "Unexpected error querying expert %s",
                 role,
-                exc_info=(type(response), response, response.__traceback__),
             )
             normalized.append(
                 {
