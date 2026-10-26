@@ -4,11 +4,15 @@ import json
 import httpx
 import logging
 import re
+import time
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from functools import lru_cache
 from typing import Any, Optional
 
-from .config import get_settings
+from .config import get_settings, validate_provider
+from .execution import current_execution
+from lib.contracts import fingerprint, validate_schema
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +25,145 @@ class LLMClient:
         api_key: Optional[str] = None,
         api_url: Optional[str] = None,
         model: Optional[str] = None,
-    ):
+    ) -> None:
         settings = get_settings()
         self.api_key = api_key or settings.openrouter_api_key
         self.api_url = api_url or settings.openrouter_api_url
         self.model = model or settings.openrouter_model
         self._client: Optional[httpx.AsyncClient] = None
+
+    async def _post(
+        self, headers: dict[str, str], payload: dict[str, Any]
+    ) -> httpx.Response:
+        settings = get_settings()
+        if not self.api_url or not payload.get("model"):
+            raise ValueError(
+                "Configure a provider URL and model before sending a request"
+            )
+        validate_provider(self.api_url, payload["model"])
+        if (
+            sum(len(str(item.get("content", ""))) for item in payload["messages"])
+            > settings.max_prompt_chars
+        ):
+            raise ValueError(
+                "The supplied context exceeds this installation's prompt limit. Use a smaller excerpt or fewer turns."
+            )
+        payload["max_tokens"] = settings.max_output_tokens
+        execution = current_execution.get()
+        receipt: dict[str, Any] = {
+            "configured_model": payload["model"],
+            "request_sha256": fingerprint(payload),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "status": "in_flight",
+            "rule_version": "advisors-3",
+            "max_output_tokens": settings.max_output_tokens,
+        }
+        if execution:
+            execution.before_call()
+            execution.receipts.append(receipt)
+            # Persist the in-flight marker before dispatch. A crash here is ambiguous.
+            await execution.checkpoint()
+        started = time.monotonic()
+        try:
+            timeout = (
+                min(
+                    120.0,
+                    max(
+                        0.1, execution.timeout - (time.monotonic() - execution.started)
+                    ),
+                )
+                if execution
+                else 120.0
+            )
+            response = await self._get_client().post(
+                self.api_url, headers=headers, json=payload, timeout=timeout
+            )
+            receipt["http_status"] = response.status_code
+            receipt["status"] = "returned"
+            try:
+                data = response.json()
+                if isinstance(data, dict):
+                    receipt.update(
+                        {
+                            key: data[key]
+                            for key in ("id", "model", "provider", "usage")
+                            if key in data
+                        }
+                    )
+                    choices = data.get("choices")
+                    if (
+                        isinstance(choices, list)
+                        and choices
+                        and isinstance(choices[0], dict)
+                    ):
+                        receipt["finish_reason"] = choices[0].get(
+                            "finish_reason", "unknown"
+                        )
+            except ValueError:
+                receipt["status"] = "invalid_json"
+            return response
+        except httpx.HTTPError:
+            # A transport timeout/reset cannot tell us whether the provider
+            # received or completed the request. Recovery must be deliberate.
+            receipt["status"] = "transport_uncertain"
+            raise
+        finally:
+            receipt["elapsed_seconds"] = round(time.monotonic() - started, 3)
+            receipt["ended_at"] = datetime.now(timezone.utc).isoformat()
+            if execution:
+                await execution.checkpoint()
+
+    @staticmethod
+    def _response_data(response: httpx.Response) -> dict[str, Any]:
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):
+            raise ValueError("Provider response was not an object")
+        if isinstance(data.get("error"), dict):
+            code = data["error"].get("code")
+            status = code if type(code) is int and 400 <= code <= 599 else 502
+            httpx.Response(
+                status, headers=response.headers, json=data, request=response.request
+            ).raise_for_status()
+        return data
+
+    @staticmethod
+    def _content(data: dict[str, Any], *, structured: bool = False) -> Any:
+        choices = data.get("choices")
+        if (
+            not isinstance(choices, list)
+            or not choices
+            or not isinstance(choices[0], dict)
+        ):
+            raise ValueError("No choices in API response")
+        choice = choices[0]
+        if choice.get("finish_reason") in (
+            "length",
+            "max_tokens",
+            "content_filter",
+            "error",
+        ):
+            raise ValueError(
+                "Provider output was truncated or withheld; this is not a completed answer"
+            )
+        message = choice.get("message")
+        if not isinstance(message, dict):
+            raise ValueError("Provider omitted its message")
+        content = message.get("content")
+        if structured and isinstance(content, dict):
+            return content
+        if isinstance(content, list):
+            if any(
+                not isinstance(item, dict)
+                or item.get("type", "text") != "text"
+                or not isinstance(item.get("text"), str)
+                for item in content
+            ):
+                raise ValueError("Unsupported provider content blocks")
+            content = "".join(item["text"] for item in content)
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("Provider returned no usable text")
+        return content
 
     def _get_client(self) -> httpx.AsyncClient:
         """Return a reusable async HTTP client, creating one if needed."""
@@ -57,7 +194,7 @@ class LLMClient:
             httpx.HTTPError: If the API request fails
             ValueError: If the response format is unexpected
         """
-        if not self.api_key:
+        if not self.api_key.strip():
             raise ValueError("OpenRouter API key not configured")
 
         headers = {
@@ -66,34 +203,26 @@ class LLMClient:
             "HTTP-Referer": "http://localhost:8123",
         }
 
-        payload = {
-            "model": model or self.model,
+        execution = current_execution.get()
+        payload: dict[str, Any] = {
+            "model": model
+            or (execution.advisor_model if execution else "")
+            or self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
         }
 
-        client = self._get_client()
         try:
-            response = await client.post(
-                self.api_url,
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if "choices" not in data or not data["choices"]:
-                raise ValueError("No choices in API response")
-
-            return str(data["choices"][0]["message"]["content"])
+            response = await self._post(headers, payload)
+            return str(self._content(self._response_data(response)))
 
         except httpx.HTTPStatusError as e:
             logger.error(f"OpenRouter API error: {e.response.status_code}")
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error: {e}")
+            logger.error("Provider connection failed (%s)", type(e).__name__)
             raise
         except (KeyError, IndexError) as e:
             logger.error(f"Unexpected response format: {e}")
@@ -110,7 +239,7 @@ class LLMClient:
         model: Optional[str] = None,
     ) -> dict[str, Any]:
         """Generate structured JSON, optionally using a task-specific model."""
-        if not self.api_key:
+        if not self.api_key.strip():
             raise ValueError("OpenRouter API key not configured")
 
         headers = {
@@ -119,7 +248,7 @@ class LLMClient:
             "HTTP-Referer": "http://localhost:8123",
         }
 
-        payload = {
+        payload: dict[str, Any] = {
             "model": model or self.model,
             "messages": [
                 {"role": "system", "content": system_prompt},
@@ -135,13 +264,8 @@ class LLMClient:
             },
         }
 
-        client = self._get_client()
         try:
-            response = await client.post(
-                self.api_url,
-                headers=headers,
-                json=payload,
-            )
+            response = await self._post(headers, payload)
             # Strict schemas can leave only one eligible upstream provider. A
             # confirmed shared-pool 429 permits ONE same-model JSON-mode attempt
             # through another provider; account/key limits must never trigger it.
@@ -172,29 +296,11 @@ class LLMClient:
                     },
                     {"role": "user", "content": prompt},
                 ]
-                response = await client.post(
-                    self.api_url, headers=headers, json=payload
-                )
-            response.raise_for_status()
-            data = response.json()
-            # OpenRouter may report an upstream failure in a successful HTTP
-            # envelope. Preserve its status/metadata instead of calling it bad JSON.
-            if isinstance(data.get("error"), dict):
-                code = data["error"].get("code")
-                status = code if type(code) is int and 400 <= code <= 599 else 502
-                failure = httpx.Response(
-                    status,
-                    headers=response.headers,
-                    json=data,
-                    request=response.request,
-                )
-                failure.raise_for_status()
-
-            if "choices" not in data or not data["choices"]:
-                raise ValueError("No choices in API response")
-
-            content = data["choices"][0]["message"]["content"]
+                response = await self._post(headers, payload)
+            data = self._response_data(response)
+            content = self._content(data, structured=True)
             if isinstance(content, dict):
+                validate_schema(content, schema)
                 return content
             if isinstance(content, list):
                 content = "".join(
@@ -205,13 +311,14 @@ class LLMClient:
             parsed = json.loads(content)
             if not isinstance(parsed, dict):
                 raise ValueError("Structured response was not a JSON object")
+            validate_schema(parsed, schema)
             return parsed
 
         except httpx.HTTPStatusError as e:
             logger.error(f"OpenRouter API error: {e.response.status_code}")
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error: {e}")
+            logger.error("Provider connection failed (%s)", type(e).__name__)
             raise
         except (KeyError, IndexError, json.JSONDecodeError) as e:
             logger.error(f"Unexpected structured response format: {e}")
